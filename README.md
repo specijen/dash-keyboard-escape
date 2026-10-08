@@ -18,6 +18,13 @@ Plays on computers and iPads, with nothing to install.
 
 The 🚩 button sends you back to your last checkpoint if you get stuck.
 
+## Your avatar
+
+The first time you press Play you pick a look: skin, shirt and pants colours, a hat
+(cap, crown, top hat, party hat or bunny ears), a face, and your name, which floats
+above your head. Change it any time with **🎨 Avatar & name** on the menu. Each device
+remembers its own avatar.
+
 ## The course
 
 1. **Letter Row**: friendly hops across QWERTY.
@@ -39,7 +46,8 @@ crumble or move, and the Dash each sign asks for. The world builds itself from t
 index.html       page, HUD and menus
 style.css        layout and touch controls
 js/main.js       game loop, camera, saving, menus
-js/player.js     the blocky avatar and its physics
+js/player.js     player movement and physics
+js/avatar.js     builds the blocky avatar: colours, hats, faces, name tag
 js/world.js      builds keys from the course data; moving and crumbling keys
 js/levels.js     the course itself
 js/input.js      keyboard, mouse, joystick and jump button

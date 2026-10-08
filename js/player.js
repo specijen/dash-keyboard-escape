@@ -1,4 +1,5 @@
 import * as THREE from "../vendor/three.module.js";
+import { buildAvatar } from "./avatar.js";
 
 const HALF_W = 0.4;
 const HEIGHT = 2.0;
@@ -9,50 +10,12 @@ const COYOTE = 0.12; // grace period to jump after running off an edge
 const JUMP_BUFFER = 0.15; // a jump pressed just before landing still counts
 const STEP_UP = 0.6; // small ledges are climbed automatically
 
-function box(color, w, h, d) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  m.castShadow = true;
-  return m;
-}
-
-// A limb that swings from its top end.
-function limb(color, w, h, d, x, y) {
-  const pivot = new THREE.Group();
-  pivot.position.set(x, y, 0);
-  const m = box(color, w, h, d);
-  m.position.y = -h / 2;
-  pivot.add(m);
-  return pivot;
-}
-
-function buildAvatar() {
-  const g = new THREE.Group();
-  const legL = limb(0x2b3a67, 0.38, 0.8, 0.4, -0.2, 0.8);
-  const legR = limb(0x2b3a67, 0.38, 0.8, 0.4, 0.2, 0.8);
-  const armL = limb(0xffcc33, 0.3, 0.75, 0.3, -0.56, 1.58);
-  const armR = limb(0xffcc33, 0.3, 0.75, 0.3, 0.56, 1.58);
-  const torso = box(0x2f80ed, 0.8, 0.8, 0.45);
-  torso.position.y = 1.2;
-  const head = box(0xffcc33, 0.55, 0.5, 0.5);
-  head.position.y = 1.86;
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  for (const x of [-0.12, 0.12]) {
-    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.11, 0.02), eyeMat);
-    eye.position.set(x, 0.05, 0.26);
-    head.add(eye);
-  }
-  const smile = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.02), eyeMat);
-  smile.position.set(0, -0.11, 0.26);
-  head.add(smile);
-  g.add(legL, legR, armL, armR, torso, head);
-  g.userData = { legL, legR, armL, armR };
-  return g;
-}
-
 export class Player {
-  constructor(scene) {
-    this.mesh = buildAvatar();
+  constructor(scene, look) {
+    this.scene = scene;
+    this.mesh = buildAvatar(look);
     scene.add(this.mesh);
+    this.preview = false; // standing still and waving in the avatar picker
     this.pos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
     this.grounded = false;
@@ -63,10 +26,24 @@ export class Player {
     this.stride = 0;
   }
 
+  // Swap in a freshly built avatar (new colours, hat, face or name).
+  setLook(look) {
+    this.scene.remove(this.mesh);
+    this.mesh.traverse((o) => {
+      o.geometry?.dispose();
+      for (const m of [o.material].flat()) {
+        m?.map?.dispose();
+        m?.dispose();
+      }
+    });
+    this.mesh = buildAvatar(look);
+    this.scene.add(this.mesh);
+  }
+
   spawn(at) {
     this.pos.copy(at);
     this.vel.set(0, 0, 0);
-    this.grounded = false;
+    this.grounded = true; // spawn points are always on top of a key
     this.ground = null;
     this.jumpBuffer = 0;
   }
@@ -182,7 +159,14 @@ export class Player {
     }
     this.mesh.rotation.y = this.facing;
     const { legL, legR, armL, armR } = this.mesh.userData;
-    if (this.grounded) {
+    if (this.preview) {
+      this.stride += dt;
+      legL.rotation.x = legR.rotation.x = armL.rotation.x = 0;
+      armL.rotation.z = 0;
+      armR.rotation.x = 0;
+      armR.rotation.z = 2.6 + Math.sin(this.stride * 6) * 0.35; // wave
+      this.mesh.rotation.y = this.facing + Math.sin(this.stride * 0.8) * 0.6;
+    } else if (this.grounded) {
       this.stride += dt * Math.min(hs, 20) * 1.2;
       const swing = Math.sin(this.stride) * Math.min(1, hs / 6) * 0.9;
       legL.rotation.x = swing;

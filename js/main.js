@@ -4,6 +4,7 @@ import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Input } from "./input.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
+import { OPTIONS, cleanLook, cleanName, randomLook } from "./avatar.js";
 
 const STEP = 1 / 120;
 const BASE_SPEED = 8;
@@ -17,7 +18,8 @@ const ui = {
   stick: $("stick"), knob: $("knob"), jump: $("jump"), menu: $("menu"), win: $("win"),
   play: $("play"), restart: $("restart"), reset: $("reset"), again: $("again"),
   sound: $("btn-sound"), back: $("btn-back"), pause: $("btn-pause"),
-  winTime: $("win-time"), winBest: $("win-best"), winDash: $("win-dash"),
+  winTime: $("win-time"), winBest: $("win-best"), winDash: $("win-dash"), winTitle: $("win-title"),
+  avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
 // ---- Saved progress (per device) -------------------------------------------
@@ -26,6 +28,8 @@ let save = fresh();
 try {
   save = { ...save, ...JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") };
 } catch {}
+// `look` is only missing on a brand-new device; first Play opens the picker then.
+if (save.look) save.look = cleanLook(save.look);
 function persist() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
@@ -53,7 +57,7 @@ scene.add(sun, sun.target);
 
 const course = buildCourse();
 const world = new World(scene, course);
-const player = new Player(scene);
+const player = new Player(scene, save.look);
 const input = new Input(canvas, ui);
 
 function resize() {
@@ -69,6 +73,8 @@ resize();
 const cam = { yaw: 0, pitch: 0.42, dist: 11, target: new THREE.Vector3() };
 
 function updateCamera(dt, snap = false) {
+  if (state === "avatar") return previewCamera(dt);
+  camera.clearViewOffset();
   const look = input.takeLook();
   cam.yaw -= look.x * 0.006 + input.turn() * 2.5 * dt;
   cam.pitch = THREE.MathUtils.clamp(cam.pitch + look.y * 0.005, 0.05, 1.3);
@@ -87,8 +93,28 @@ function updateCamera(dt, snap = false) {
   sun.target.position.copy(player.pos);
 }
 
+// Close-up of the avatar's front, nudged so it isn't hidden behind the picker card.
+function previewCamera(dt) {
+  input.takeLook();
+  const want = player.pos.clone().add(new THREE.Vector3(0, 1.45, 0));
+  cam.target.lerp(want, 1 - Math.exp(-8 * dt));
+  const yaw = player.facing;
+  const w = innerWidth, h = innerHeight;
+  const dist = w > h ? 5.2 : 6.4;
+  camera.position.set(
+    cam.target.x + Math.sin(yaw) * dist,
+    cam.target.y + 0.6,
+    cam.target.z + Math.cos(yaw) * dist,
+  );
+  camera.lookAt(cam.target);
+  if (w > h) camera.setViewOffset(w, h, w * 0.22, 0, w, h);
+  else camera.setViewOffset(w, h, 0, h * 0.2, w, h);
+  sun.position.copy(player.pos).add(new THREE.Vector3(Math.sin(yaw) * 10, 20, Math.cos(yaw) * 10));
+  sun.target.position.copy(player.pos);
+}
+
 // ---- Game state ----------------------------------------------------------------
-let state = "menu"; // menu | playing | won
+let state = "menu"; // menu | avatar | playing | won
 let moveTime = 0;
 let shownStage = -1;
 let toastTimer = 0;
@@ -189,6 +215,7 @@ function openMenu() {
 
 function play() {
   unlockAudio();
+  if (!save.look) return openAvatar(true);
   show(ui.menu, false);
   show(ui.win, false);
   if (state === "menu" && cam.resumeYaw !== undefined) cam.yaw = cam.resumeYaw;
@@ -214,6 +241,7 @@ function win() {
   const newBest = save.best === null || save.runTime < save.best;
   if (newBest) save.best = save.runTime;
   const fmt = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+  ui.winTitle.textContent = save.look?.name ? `${save.look.name} escaped! 🎉` : "You escaped! 🎉";
   ui.winTime.textContent = fmt(save.runTime) + (newBest ? "  ⭐ New best!" : "");
   ui.winBest.textContent = fmt(save.best);
   ui.winDash.textContent = save.dash;
@@ -223,6 +251,92 @@ function win() {
   setTimeout(() => show(ui.win, true), 900);
 }
 
+// ---- Avatar picker --------------------------------------------------------------------
+let draft = null;
+let playAfterAvatar = false;
+
+function buildPicker() {
+  for (const key of ["skin", "shirt", "pants"]) {
+    const box = $(`opt-${key}`);
+    for (const color of OPTIONS[key]) {
+      const b = document.createElement("button");
+      b.className = "swatch";
+      b.style.background = color;
+      b.dataset.key = key;
+      b.dataset.value = color;
+      b.setAttribute("aria-label", `${key} ${color}`);
+      box.append(b);
+    }
+  }
+  for (const key of ["hat", "face"]) {
+    const box = $(`opt-${key}`);
+    for (const { id, label } of OPTIONS[key]) {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = label;
+      b.dataset.key = key;
+      b.dataset.value = id;
+      box.append(b);
+    }
+  }
+  ui.avatar.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-key]");
+    if (!b) return;
+    draft[b.dataset.key] = b.dataset.value;
+    refreshPicker();
+  });
+}
+
+function refreshPicker() {
+  for (const b of ui.avatar.querySelectorAll("[data-key]")) {
+    b.classList.toggle("on", draft[b.dataset.key] === b.dataset.value);
+  }
+  player.setLook(draft);
+}
+
+function openAvatar(thenPlay = false) {
+  playAfterAvatar = thenPlay;
+  state = "avatar";
+  input.enabled = false;
+  input.release();
+  draft = { ...(save.look ?? randomLook()) };
+  ui.name.value = draft.name;
+  player.preview = true;
+  show(ui.menu, false);
+  show(ui.avatar, true);
+  document.body.classList.add("picking");
+  refreshPicker();
+}
+
+function closeAvatar() {
+  draft.name = cleanName(ui.name.value);
+  save.look = cleanLook(draft);
+  player.setLook(save.look);
+  player.preview = false;
+  persist();
+  show(ui.avatar, false);
+  document.body.classList.remove("picking");
+  ui.name.blur();
+  state = "menu";
+  if (playAfterAvatar) play();
+  else openMenu();
+}
+
+buildPicker();
+ui.name.addEventListener("input", () => {
+  draft.name = cleanName(ui.name.value);
+  player.setLook(draft);
+});
+ui.name.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") ui.name.blur();
+});
+ui.random.addEventListener("click", () => {
+  draft = randomLook(cleanName(ui.name.value));
+  refreshPicker();
+});
+ui.avatarDone.addEventListener("click", closeAvatar);
+ui.openAvatar.addEventListener("click", () => openAvatar(false));
+
 ui.play.addEventListener("click", play);
 ui.restart.addEventListener("click", () => {
   startOver();
@@ -230,7 +344,7 @@ ui.restart.addEventListener("click", () => {
 });
 ui.reset.addEventListener("click", () => {
   if (!confirm("Reset everything? Your Dash and best time will go back to zero.")) return;
-  save = { ...fresh(), muted: save.muted };
+  save = { ...fresh(), muted: save.muted, look: save.look };
   startOver();
   renderHud();
   play();
@@ -251,6 +365,8 @@ ui.sound.addEventListener("click", () => {
   renderHud();
 });
 addEventListener("keydown", (e) => {
+  if (e.target.closest?.("input")) return;
+  if (state === "avatar" && e.code === "Escape") return closeAvatar();
   if (e.code === "Escape" || e.code === "KeyP") state === "playing" ? openMenu() : state === "menu" && play();
 });
 document.addEventListener("visibilitychange", () => {
@@ -323,4 +439,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Handy for testing from the browser console.
-window.game = { get save() { return save; }, input, player, world, course, cam, physicsStep, STEP, get state() { return state; } };
+window.game = { openAvatar, closeAvatar, get save() { return save; }, input, player, world, course, cam, physicsStep, STEP, get state() { return state; } };

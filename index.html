@@ -39,6 +39,7 @@
       <div class="logo"><span>DASH</span> Keyboard Escape</div>
       <p class="tag">Every second you keep moving you get <b>+1 ⚡ Dash</b>.<br>More Dash = faster running and longer jumps.<br>Race across the giant keyboard and hit <b>ESC</b>!</p>
       <button id="play" class="big">Play</button>
+      <button id="open-avatar" class="secondary wide">🎨 Avatar &amp; name</button>
       <div class="row">
         <button id="restart" class="secondary">Back to start</button>
         <button id="reset" class="secondary danger">Reset everything</button>
@@ -58,9 +59,28 @@
     </div>
   </div>
 
+  <div id="avatar" class="overlay side hidden">
+    <div class="card picker">
+      <div class="logo small">Your avatar</div>
+      <label class="name-row">
+        <span>Name</span>
+        <input id="name" type="text" maxlength="12" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Type your name">
+      </label>
+      <div class="opt"><span>Skin</span><div id="opt-skin" class="swatches"></div></div>
+      <div class="opt"><span>Shirt</span><div id="opt-shirt" class="swatches"></div></div>
+      <div class="opt"><span>Pants</span><div id="opt-pants" class="swatches"></div></div>
+      <div class="opt"><span>Hat</span><div id="opt-hat" class="chips"></div></div>
+      <div class="opt"><span>Face</span><div id="opt-face" class="chips"></div></div>
+      <div class="row">
+        <button id="random" class="secondary">🎲 Surprise me</button>
+        <button id="avatar-done" class="big compact">Done</button>
+      </div>
+    </div>
+  </div>
+
   <div id="win" class="overlay hidden">
     <div class="card">
-      <div class="logo">You escaped! 🎉</div>
+      <div id="win-title" class="logo">You escaped! 🎉</div>
       <div class="results">
         <div><span>Time</span><b id="win-time"></b></div>
         <div><span>Best</span><b id="win-best"></b></div>
