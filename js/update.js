@@ -13,6 +13,10 @@ const FILES = [
   "js/input.js",
   "js/audio.js",
   "js/update.js",
+  "js/config.js",
+  "js/net.js",
+  "js/remote.js",
+  "js/multiplayer.js",
 ];
 const EVERY = 3 * 60 * 1000;
 

@@ -25,6 +25,26 @@ The first time you press Play you pick a look: skin, shirt and pants colours, a 
 above your head. Change it any time with **🎨 Avatar & name** on the menu. Each device
 remembers its own avatar.
 
+## Play together
+
+Tap **👥 Play together** on the menu. One person taps **Host a game** and gets a
+4-letter room code; everyone else types the code and taps **Join**. You see each
+other's avatars and names running the course.
+
+The host (👑) can tap **🏁 Start race**: everyone is sent back to START, there's a
+3-2-1 countdown, and a results board shows the finishing order and times. Everyone
+keeps their own Dash, so practising pays off. The 👥 chip under the timer reopens the room.
+
+Multiplayer uses Supabase Realtime (`js/config.js` holds the project URL and its
+publishable key, which is safe to be public). Nothing is stored: positions and names
+are passed between players in the room and forgotten. There's no chat.
+Free-plan notes: Supabase pauses a project after about a week with no use
+(press **Restore** in the dashboard), and the free plan includes 2 million
+Realtime messages a month.
+
+For testing on one computer, open the game in two tabs with `?net=local` on the
+address; they talk to each other without Supabase.
+
 ## The course
 
 1. **Letter Row**: friendly hops across QWERTY.
@@ -53,8 +73,12 @@ js/levels.js     the course itself
 js/input.js      keyboard, mouse, joystick and jump button
 js/audio.js      synthesised sound effects
 js/update.js     spots new versions and shows the Refresh banner
+js/multiplayer.js  rooms, lobby, sharing your position, race messages
+js/net.js        connection: Supabase Realtime, or local tabs for testing
+js/remote.js     draws and smooths the other players
+js/config.js     Supabase project URL and publishable key
 sw.js            service worker: always-fresh files, offline copy
-vendor/          three.js r160 (MIT licence)
+vendor/          three.js r160 and supabase-js 2.116.0 (MIT licences)
 ```
 
 ## Running it locally

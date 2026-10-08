@@ -154,6 +154,36 @@ export function buildAvatar(look) {
   return g;
 }
 
+export function disposeAvatar(mesh) {
+  mesh.removeFromParent();
+  mesh.traverse((o) => {
+    o.geometry?.dispose();
+    for (const m of [o.material].flat()) {
+      m?.map?.dispose();
+      m?.dispose();
+    }
+  });
+}
+
+// Running / jumping pose, shared by your avatar and other players' avatars.
+export function poseLimbs(mesh, grounded, speed, stride) {
+  const { legL, legR, armL, armR } = mesh.userData;
+  if (grounded) {
+    const swing = Math.sin(stride) * Math.min(1, speed / 6) * 0.9;
+    legL.rotation.x = swing;
+    legR.rotation.x = -swing;
+    armL.rotation.x = -swing;
+    armR.rotation.x = swing;
+    armL.rotation.z = armR.rotation.z = 0;
+  } else {
+    legL.rotation.x = 0.5;
+    legR.rotation.x = -0.3;
+    armL.rotation.x = armR.rotation.x = -2.6;
+    armL.rotation.z = -0.2;
+    armR.rotation.z = 0.2;
+  }
+}
+
 // The player's name floating above their head; always faces the camera.
 function nameTag(name) {
   const canvas = document.createElement("canvas");

@@ -1,5 +1,5 @@
 import * as THREE from "../vendor/three.module.js";
-import { buildAvatar } from "./avatar.js";
+import { buildAvatar, disposeAvatar, poseLimbs } from "./avatar.js";
 
 const HALF_W = 0.4;
 const HEIGHT = 2.0;
@@ -28,14 +28,7 @@ export class Player {
 
   // Swap in a freshly built avatar (new colours, hat, face or name).
   setLook(look) {
-    this.scene.remove(this.mesh);
-    this.mesh.traverse((o) => {
-      o.geometry?.dispose();
-      for (const m of [o.material].flat()) {
-        m?.map?.dispose();
-        m?.dispose();
-      }
-    });
+    disposeAvatar(this.mesh);
     this.mesh = buildAvatar(look);
     this.scene.add(this.mesh);
   }
@@ -166,20 +159,9 @@ export class Player {
       armR.rotation.x = 0;
       armR.rotation.z = 2.6 + Math.sin(this.stride * 6) * 0.35; // wave
       this.mesh.rotation.y = this.facing + Math.sin(this.stride * 0.8) * 0.6;
-    } else if (this.grounded) {
-      this.stride += dt * Math.min(hs, 20) * 1.2;
-      const swing = Math.sin(this.stride) * Math.min(1, hs / 6) * 0.9;
-      legL.rotation.x = swing;
-      legR.rotation.x = -swing;
-      armL.rotation.x = -swing;
-      armR.rotation.x = swing;
-      armL.rotation.z = armR.rotation.z = 0;
     } else {
-      legL.rotation.x = 0.5;
-      legR.rotation.x = -0.3;
-      armL.rotation.x = armR.rotation.x = -2.6;
-      armL.rotation.z = -0.2;
-      armR.rotation.z = 0.2;
+      if (this.grounded) this.stride += dt * Math.min(hs, 20) * 1.2;
+      poseLimbs(this.mesh, this.grounded, hs, this.stride);
     }
   }
 }

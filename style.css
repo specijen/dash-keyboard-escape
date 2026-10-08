@@ -8,6 +8,7 @@
 }
 
 * { box-sizing: border-box; }
+.hidden { display: none !important; }
 
 html, body {
   margin: 0;
@@ -141,6 +142,103 @@ button {
   font-weight: 900;
 }
 @keyframes bob { 50% { transform: translate(-50%, 4px); } }
+
+/* ---- Play together ---- */
+.middle-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.room-chip {
+  pointer-events: auto;
+  background: var(--panel);
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.room-chip.hidden { display: none; }
+#countdown {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: min(40vw, 260px);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 8px 0 rgba(29, 35, 64, 0.35), 0 0 40px rgba(29, 35, 64, 0.3);
+  pointer-events: none;
+  z-index: 15;
+}
+#countdown.hidden { display: none; }
+#countdown.go { color: var(--gold); }
+.mp-btn { background: #fff3c4; }
+.join-row { display: flex; gap: 10px; margin-top: 14px; }
+.join-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-align: center;
+  text-transform: uppercase;
+  padding: 8px;
+  border-radius: 16px;
+  border: 2px solid #d9dcea;
+  background: #f6f7fb;
+  color: var(--ink);
+  outline: none;
+}
+.join-row input:focus { border-color: var(--blue); background: #fff; }
+.join-row .big { flex: 0 0 34%; }
+.mp-note { margin: 10px 0 0; font-size: 15px; font-weight: 700; color: #5a6080; min-height: 1em; }
+.mp-note:empty { display: none; }
+.mp-note.error { color: #c62828; }
+.room-label { font-size: 14px; font-weight: 800; color: #5a6080; }
+.room-code {
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: 10px;
+  margin: 2px 0 0;
+  padding-left: 10px;
+}
+.players {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.players li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef0f7;
+  border-radius: 999px;
+  padding: 6px 12px 6px 6px;
+  font-weight: 800;
+}
+.players .dot { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(0, 0, 0, 0.1); }
+.race-results {
+  text-align: left;
+  margin: 10px auto;
+  padding: 0;
+  list-style: none;
+  max-width: 320px;
+}
+.race-results.hidden { display: none; }
+.race-results li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 18px;
+}
+.race-results li:nth-child(odd) { background: #eef0f7; }
+.race-results li.me { background: #fff3c4; }
+.race-results .waiting { color: #8a90a8; font-weight: 700; }
 
 /* ---- Touch controls (only on touch screens) ---- */
 #stick, #jump { display: none; }
