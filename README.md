@@ -52,6 +52,8 @@ js/world.js      builds keys from the course data; moving and crumbling keys
 js/levels.js     the course itself
 js/input.js      keyboard, mouse, joystick and jump button
 js/audio.js      synthesised sound effects
+js/update.js     spots new versions and shows the Refresh banner
+sw.js            service worker: always-fresh files, offline copy
 vendor/          three.js r160 (MIT licence)
 ```
 
@@ -68,3 +70,9 @@ Then open http://localhost:8000.
 ## Hosting
 
 Served by GitHub Pages from the `main` branch root.
+
+`sw.js` is a small service worker that re-checks every file with the server on each
+load, so a new version appears straight away rather than after GitHub Pages' 10-minute
+cache. It also keeps a copy so the game opens offline. While the game is open,
+`js/update.js` checks for a new version every few minutes and shows a **Refresh**
+banner when there is one. If you add a new JS file, add it to the list in `js/update.js`.

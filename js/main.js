@@ -5,6 +5,7 @@ import { Player } from "./player.js";
 import { Input } from "./input.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { OPTIONS, cleanLook, cleanName, randomLook } from "./avatar.js";
+import { watchForUpdates } from "./update.js";
 
 const STEP = 1 / 120;
 const BASE_SPEED = 8;
@@ -19,6 +20,7 @@ const ui = {
   play: $("play"), restart: $("restart"), reset: $("reset"), again: $("again"),
   sound: $("btn-sound"), back: $("btn-back"), pause: $("btn-pause"),
   winTime: $("win-time"), winBest: $("win-best"), winDash: $("win-dash"), winTitle: $("win-title"),
+  update: $("update"), updateBtn: $("update-btn"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
@@ -377,6 +379,15 @@ addEventListener("pointerdown", (e) => {
 });
 if (navigator.maxTouchPoints > 0 && matchMedia("(pointer: coarse)").matches) document.body.classList.add("touch");
 setInterval(() => state === "playing" && persist(), 5000);
+addEventListener("pagehide", persist);
+
+// ---- Updates: always load fresh files, and offer a refresh when a new version is published ----
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+const checkForUpdate = watchForUpdates(() => show(ui.update, true));
+ui.updateBtn.addEventListener("click", () => {
+  persist();
+  location.reload();
+});
 
 // ---- Confetti on the Escape key ---------------------------------------------------------
 const bits = [];
@@ -439,4 +450,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Handy for testing from the browser console.
-window.game = { openAvatar, closeAvatar, get save() { return save; }, input, player, world, course, cam, physicsStep, STEP, get state() { return state; } };
+window.game = { checkForUpdate, openAvatar, closeAvatar, get save() { return save; }, input, player, world, course, cam, physicsStep, STEP, get state() { return state; } };

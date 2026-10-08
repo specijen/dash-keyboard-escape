@@ -112,6 +112,36 @@ button {
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+#update {
+  position: fixed;
+  top: calc(max(10px, env(safe-area-inset-top)) + 72px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 17px;
+  white-space: nowrap;
+  box-shadow: 0 6px 0 rgba(29, 35, 64, 0.2), 0 12px 30px rgba(29, 35, 64, 0.25);
+  z-index: 20;
+  animation: bob 1.6s ease-in-out infinite;
+}
+#update.hidden { display: none; }
+#update button {
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #0b3d22;
+  font-size: 17px;
+  font-weight: 900;
+}
+@keyframes bob { 50% { transform: translate(-50%, 4px); } }
+
 /* ---- Touch controls (only on touch screens) ---- */
 #stick, #jump { display: none; }
 body.touch #jump {
