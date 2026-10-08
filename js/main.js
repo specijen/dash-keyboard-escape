@@ -26,7 +26,7 @@ const ui = {
   mpJoin: $("mp-join"), mpError: $("mp-error"), mpRoom: $("mp-room"), mpStatus: $("mp-status"), mpPlayers: $("mp-players"),
   mpRace: $("mp-race"), mpWait: $("mp-wait"), mpPlay: $("mp-play"), mpLeave: $("mp-leave"), mpBack: $("mp-back"),
   roomChip: $("room-chip"), roomChipText: $("room-chip-text"), countdown: $("countdown"),
-  raceResults: $("race-results"), raceAgain: $("race-again"), winTag: $("win-tag"),
+  raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
@@ -212,7 +212,16 @@ function show(el, visible) {
 }
 
 function openMenu() {
-  if (state === "won" || state === "countdown") return;
+  if (state === "countdown") return;
+  // Close whatever screen we came from so the menu is never hidden underneath it.
+  show(ui.mp, false);
+  show(ui.win, false);
+  if (state === "won") {
+    // Leaving the win screen: start the next run from START, not on top of ESC.
+    if (race?.phase === "finished") race = null;
+    world.setCheckpointReached(0);
+    respawn();
+  }
   state = "menu";
   input.enabled = false;
   input.release();
@@ -267,7 +276,7 @@ function win() {
   save.cp = 0;
   save.runTime = 0;
   persist();
-  setTimeout(() => show(ui.win, true), 900);
+  setTimeout(() => state === "won" && show(ui.win, true), 900);
 }
 
 // ---- Avatar picker --------------------------------------------------------------------
@@ -505,7 +514,6 @@ function renderMp() {
   const inRoom = mp.inRoom;
   show(ui.mpOut, !inRoom);
   show(ui.mpIn, inRoom);
-  show(ui.mpBack, !inRoom);
   show(ui.roomChip, inRoom);
   if (!inRoom) {
     ui.mpError.textContent = mp.status === "error" ? "Couldn't connect. Check the internet and try again." : "";
@@ -584,9 +592,11 @@ ui.mpLeave.addEventListener("click", () => {
   mp.leave();
   race = null;
 });
-ui.mpBack.addEventListener("click", () => {
-  state = "menu";
-  openMenu();
+ui.mpBack.addEventListener("click", openMenu);
+ui.winMenu.addEventListener("click", openMenu);
+// Tapping the dimmed background around the Play together card also goes back.
+ui.mp.addEventListener("click", (e) => {
+  if (e.target === ui.mp) openMenu();
 });
 mp.rejoin();
 renderMp();
