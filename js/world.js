@@ -1,7 +1,7 @@
 import * as THREE from "../vendor/three.module.js";
 import { STAGES, COLORS } from "./levels.js";
 
-const CRUMBLE_WARN = 0.5; // seconds a crumble key shakes before it drops
+const CRUMBLE_WARN = 0.8; // seconds a crumble key shakes before it drops
 const CRUMBLE_GONE = 2.5; // seconds before it comes back
 
 function shade(hex, amount) {
