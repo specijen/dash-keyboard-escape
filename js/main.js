@@ -285,7 +285,7 @@ let draft = null;
 let playAfterAvatar = false;
 
 function buildPicker() {
-  for (const key of ["skin", "shirt", "pants"]) {
+  for (const key of ["skin", "shirt", "pants", "hairColor"]) {
     const box = $(`opt-${key}`);
     for (const color of OPTIONS[key]) {
       const b = document.createElement("button");
@@ -297,7 +297,7 @@ function buildPicker() {
       box.append(b);
     }
   }
-  for (const key of ["hat", "face"]) {
+  for (const key of ["hair", "hat", "face"]) {
     const box = $(`opt-${key}`);
     for (const { id, label } of OPTIONS[key]) {
       const b = document.createElement("button");

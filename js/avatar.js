@@ -13,6 +13,19 @@ export const OPTIONS = {
     { id: "party", label: "Party" },
     { id: "bunny", label: "Bunny" },
   ],
+  hair: [
+    { id: "none", label: "None" },
+    { id: "short", label: "Short" },
+    { id: "spiky", label: "Spiky" },
+    { id: "long", label: "Long" },
+    { id: "ponytail", label: "Ponytail" },
+    { id: "pigtails", label: "Pigtails" },
+    { id: "bob", label: "Bob" },
+    { id: "curly", label: "Curly" },
+    { id: "mohawk", label: "Mohawk" },
+    { id: "buns", label: "Buns" },
+  ],
+  hairColor: ["#1b1b1f", "#5a3a1e", "#e8c066", "#d9673a", "#4ea8ff", "#ff7eb6", "#9b51e0", "#3ddc84"],
   face: [
     { id: "smile", label: "Smile" },
     { id: "cool", label: "Cool" },
@@ -21,7 +34,9 @@ export const OPTIONS = {
   ],
 };
 
-export const DEFAULT_LOOK = { name: "", skin: "#ffcc33", shirt: "#2f80ed", pants: "#2b3a67", hat: "none", face: "smile" };
+export const DEFAULT_LOOK = {
+  name: "", skin: "#ffcc33", shirt: "#2f80ed", pants: "#2b3a67", hat: "none", face: "smile", hair: "none", hairColor: "#5a3a1e",
+};
 
 export function randomLook(name = "") {
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
@@ -32,14 +47,16 @@ export function randomLook(name = "") {
     pants: pick(OPTIONS.pants),
     hat: pick(OPTIONS.hat).id,
     face: pick(OPTIONS.face).id,
+    hair: pick(OPTIONS.hair).id,
+    hairColor: pick(OPTIONS.hairColor),
   };
 }
 
 // Keep only values the picker knows about, so an old or hand-edited save can't break the avatar.
 export function cleanLook(look) {
   const l = { ...DEFAULT_LOOK, ...(look || {}) };
-  for (const key of ["skin", "shirt", "pants"]) if (!OPTIONS[key].includes(l[key])) l[key] = DEFAULT_LOOK[key];
-  for (const key of ["hat", "face"]) if (!OPTIONS[key].some((o) => o.id === l[key])) l[key] = DEFAULT_LOOK[key];
+  for (const key of ["skin", "shirt", "pants", "hairColor"]) if (!OPTIONS[key].includes(l[key])) l[key] = DEFAULT_LOOK[key];
+  for (const key of ["hat", "face", "hair"]) if (!OPTIONS[key].some((o) => o.id === l[key])) l[key] = DEFAULT_LOOK[key];
   l.name = cleanName(l.name);
   return l;
 }
@@ -97,6 +114,74 @@ function buildFace(id) {
   return g;
 }
 
+// Hair, built from blocks around the head (head is 0.55 wide, 0.5 tall, 0.5 deep, centred
+// on 0, so its top is y = 0.25, front z = 0.25, back z = -0.25). With a hat on, the parts
+// that would poke through the hat (spikes, mohawk, buns, a big curly top) are left off.
+function buildHair(style, color, hatted) {
+  const g = new THREE.Group();
+  if (style === "none") return g;
+  const m = mat(color);
+  const add = (w, h, d, x, y, z, rx = 0, rz = 0) => {
+    const b = box(m, w, h, d, x, y, z);
+    b.rotation.set(rx, 0, rz);
+    g.add(b);
+    return b;
+  };
+  // Every style starts from a neat short cut: top, fringe, sides and back.
+  const shortCut = () => {
+    add(0.59, 0.1, 0.55, 0, 0.29, -0.01);
+    add(0.59, 0.08, 0.05, 0, 0.215, 0.26);
+    add(0.04, 0.24, 0.5, -0.295, 0.13, -0.01);
+    add(0.04, 0.24, 0.5, 0.295, 0.13, -0.01);
+    add(0.59, 0.34, 0.05, 0, 0.1, -0.275);
+  };
+  if (style === "curly" && !hatted) {
+    // A big blocky puff that sits back from the face.
+    add(0.8, 0.42, 0.68, 0, 0.32, -0.08);
+    add(0.68, 0.12, 0.08, 0, 0.21, 0.27);
+    add(0.12, 0.5, 0.6, -0.36, 0.06, -0.1);
+    add(0.12, 0.5, 0.6, 0.36, 0.06, -0.1);
+    add(0.8, 0.55, 0.12, 0, 0.05, -0.36);
+    return g;
+  }
+  shortCut();
+  if (style === "spiky" && !hatted) {
+    for (const [x, z, rz, rx] of [[-0.18, 0.08, 0.35, 0.2], [0, 0.12, 0, 0.3], [0.18, 0.08, -0.35, 0.2], [-0.1, -0.12, 0.2, -0.25], [0.1, -0.12, -0.2, -0.25]]) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.24, 4), m);
+      spike.position.set(x, 0.43, z);
+      spike.rotation.set(rx, Math.PI / 4, rz);
+      spike.castShadow = true;
+      g.add(spike);
+    }
+  } else if (style === "long") {
+    add(0.59, 0.75, 0.08, 0, -0.14, -0.29);
+    add(0.06, 0.55, 0.32, -0.3, -0.06, -0.1);
+    add(0.06, 0.55, 0.32, 0.3, -0.06, -0.1);
+  } else if (style === "ponytail") {
+    add(0.2, 0.12, 0.08, 0, 0.12, -0.31);
+    add(0.16, 0.5, 0.16, 0, -0.08, -0.38, 0.35);
+  } else if (style === "pigtails") {
+    for (const s of [-1, 1]) {
+      add(0.1, 0.12, 0.12, 0.33 * s, 0.12, -0.08);
+      add(0.15, 0.42, 0.15, 0.42 * s, -0.06, -0.08, 0, 0.35 * s);
+    }
+  } else if (style === "bob") {
+    add(0.07, 0.42, 0.5, -0.31, 0.02, -0.01);
+    add(0.07, 0.42, 0.5, 0.31, 0.02, -0.01);
+    add(0.62, 0.42, 0.07, 0, 0.02, -0.29);
+  } else if (style === "mohawk" && !hatted) {
+    add(0.14, 0.26, 0.6, 0, 0.44, -0.02);
+  } else if (style === "buns" && !hatted) {
+    for (const s of [-1, 1]) {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), m);
+      bun.position.set(0.2 * s, 0.38, -0.04);
+      bun.castShadow = true;
+      g.add(bun);
+    }
+  }
+  return g;
+}
+
 // Hats sit on top of the head (head top is y = 0.25 in head space).
 function buildHat(id) {
   const g = new THREE.Group();
@@ -147,7 +232,7 @@ export function buildAvatar(look) {
   armR.add(box(l.shirt, 0.32, 0.26, 0.32, 0, -0.12, 0));
   const torso = box(l.shirt, 0.8, 0.8, 0.45, 0, 1.2, 0);
   const head = box(l.skin, 0.55, 0.5, 0.5, 0, 1.86, 0);
-  head.add(buildFace(l.face), buildHat(l.hat));
+  head.add(buildFace(l.face), buildHair(l.hair, l.hairColor, l.hat !== "none"), buildHat(l.hat));
   g.add(legL, legR, armL, armR, torso, head);
   if (l.name) g.add(nameTag(l.name));
   g.userData = { legL, legR, armL, armR };

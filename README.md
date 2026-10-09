@@ -20,8 +20,9 @@ The 🚩 button sends you back to your last checkpoint if you get stuck.
 
 ## Your avatar
 
-The first time you press Play you pick a look: skin, shirt and pants colours, a hat
-(cap, crown, top hat, party hat or bunny ears), a face, and your name, which floats
+The first time you press Play you pick a look: skin, shirt and pants colours, a
+hairstyle (short, spiky, long, ponytail, pigtails, bob, curly, mohawk or buns) and hair
+colour, a hat (cap, crown, top hat, party hat or bunny ears), a face, and your name, which floats
 above your head. Change it any time with **🎨 Avatar & name** on the menu. Each device
 remembers its own avatar.
 
@@ -67,7 +68,7 @@ index.html       page, HUD and menus
 style.css        layout and touch controls
 js/main.js       game loop, camera, saving, menus
 js/player.js     player movement and physics
-js/avatar.js     builds the blocky avatar: colours, hats, faces, name tag
+js/avatar.js     builds the blocky avatar: colours, hair, hats, faces, name tag
 js/world.js      builds keys from the course data; moving and crumbling keys
 js/levels.js     the course itself
 js/input.js      keyboard, mouse, joystick and jump button
