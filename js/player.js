@@ -85,12 +85,23 @@ export class Player {
     this.vel.y = Math.max(this.vel.y - GRAVITY * dt, -60);
 
     const wasGrounded = this.grounded;
+    const prevGround = this.ground;
     const fallSpeed = this.vel.y;
     this.grounded = false;
     this.ground = null;
     this.moveAxis("x", this.vel.x * dt, world, wasGrounded);
     this.moveAxis("z", this.vel.z * dt, world, wasGrounded);
     this.moveAxis("y", this.vel.y * dt, world, wasGrounded, events, fallSpeed);
+
+    // Keyboard click: a full press when landing from the air, a light tap when
+    // running from one key straight onto the next.
+    if (this.grounded && !wasGrounded) {
+      this.impact = Math.min(1.3, Math.max(0.5, -fallSpeed / 20));
+      events.push("click");
+    } else if (this.grounded && prevGround && this.ground !== prevGround) {
+      this.impact = 0.35;
+      events.push("click");
+    }
 
     for (const key of world.keys) {
       if (key.type === "lava" && this.overlaps(key.box, 0.05)) {
@@ -133,7 +144,6 @@ export class Player {
       events.push("bounce");
       return;
     }
-    if (fallSpeed < -12) events.push("land");
     this.vel.y = 0;
     this.grounded = true;
     this.ground = key;

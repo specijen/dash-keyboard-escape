@@ -187,7 +187,8 @@ function physicsStep() {
       respawn();
       return;
     }
-    sfx[e]?.();
+    if (e === "click") sfx.keyClick(player.ground, player.impact);
+    else sfx[e]?.();
   }
 
   const g = player.ground;
@@ -462,7 +463,7 @@ function updateCountdown(now) {
     if (ui.countdown.textContent !== n) {
       ui.countdown.textContent = n;
       ui.countdown.classList.remove("go");
-      sfx.land();
+      sfx.keyClick(null, 1);
     }
     return;
   }
