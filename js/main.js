@@ -29,7 +29,7 @@ const ui = {
   mpRace: $("mp-race"), mpWait: $("mp-wait"), mpPlay: $("mp-play"), mpLeave: $("mp-leave"), mpBack: $("mp-back"),
   roomChip: $("room-chip"), roomChipText: $("room-chip-text"), countdown: $("countdown"),
   levels: $("levels"), lb: $("lb"), lbTabs: $("lb-tabs"), lbTitle: $("lb-title"), lbList: $("lb-list"), lbNote: $("lb-note"),
-  lbBack: $("lb-back"), openLb: $("open-lb"), winLb: $("win-lb"), winRank: $("win-rank"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
+  lbBack: $("lb-back"), nickRow: $("nick-row"), nick: $("nick"), nickSave: $("nick-save"), nextLevel: $("next-level"), openLb: $("open-lb"), winLb: $("win-lb"), winRank: $("win-rank"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
@@ -302,6 +302,9 @@ function win() {
   ui.winTime.textContent = fmt(save.runTime) + (newBest ? "  ⭐ New best!" : "");
   ui.winBest.textContent = fmt(save.bests[save.level]);
   ui.winDash.textContent = save.dash;
+  const next = nextLevel();
+  show(ui.nextLevel, !!next);
+  if (next) ui.nextLevel.textContent = `➡️ Next: Level ${next.id} · ${next.name}`;
   renderResults();
   postScore(save.runTime);
   save.cp = 0;
@@ -402,29 +405,92 @@ ui.openAvatar.addEventListener("click", () => openAvatar(false));
 let boardLevel = 1;
 
 // Send a finished run to the leaderboard and show where it placed on the win screen.
+// Send a finished run to the leaderboard and show where it placed on the win screen.
+// Players without a name who'd make the top 10 are asked for a nickname right there.
+let pendingScore = null;
+
 async function postScore(seconds) {
   const level = save.level;
   const name = save.look?.name;
   ui.winRank.textContent = "";
+  show(ui.nickRow, false);
+  pendingScore = null;
+  const timeMs = Math.round(seconds * 1000);
+  // The board keeps each player's best, so it's the best time that places.
+  const bestMs = Math.min(timeMs, Math.round((save.bests[level] ?? Infinity) * 1000));
+  if (bestMs < MIN_TIME_MS) return;
   if (!name) {
-    ui.winRank.textContent = "Add your name in 🎨 Avatar & name to get on the leaderboard!";
+    ui.winRank.textContent = "Checking the leaderboard…";
+    try {
+      const rank = await fetchRank(level, bestMs);
+      if (rank <= 10) {
+        pendingScore = { level, timeMs: bestMs };
+        ui.winRank.textContent = `🏆 That's #${rank} on the leaderboard! Add a nickname to save it:`;
+        ui.nick.value = "";
+        show(ui.nickRow, true);
+      } else {
+        ui.winRank.textContent = "Add your name in 🎨 Avatar & name to get on the leaderboard!";
+      }
+    } catch (err) {
+      console.warn("Leaderboard:", err);
+      ui.winRank.textContent = friendlyError(err);
+    }
     return;
   }
-  const timeMs = Math.round(seconds * 1000);
-  if (timeMs < MIN_TIME_MS) return;
+  await saveScore(level, name, bestMs, bestMs < timeMs);
+}
+
+async function saveScore(level, name, timeMs, notThisRun = false) {
   ui.winRank.textContent = "Saving to the leaderboard…";
   try {
     await submitScore({ level, playerId: save.playerId, name, timeMs, dash: save.dash, shirt: save.look.shirt });
-    // The board keeps each player's best, so report where the best time sits.
-    const bestMs = Math.min(timeMs, Math.round((save.bests[level] ?? Infinity) * 1000));
-    const rank = await fetchRank(level, bestMs);
-    const lead = bestMs < timeMs ? "Your best time is" : "You're";
+    const rank = await fetchRank(level, timeMs);
+    const lead = notThisRun ? "Your best time is" : "You're";
     ui.winRank.textContent = rank <= 10 ? `🏆 ${lead} #${rank} on the leaderboard!` : `${lead} #${rank} on the leaderboard. Keep going!`;
   } catch (err) {
     console.warn("Leaderboard:", err);
     ui.winRank.textContent = friendlyError(err);
   }
 }
+
+// The nickname becomes the player's name everywhere: above their head, in rooms, on the board.
+function saveNickname() {
+  const nick = cleanName(ui.nick.value);
+  if (!nick || !pendingScore) {
+    ui.nick.focus();
+    return;
+  }
+  save.look = cleanLook({ ...save.look, name: nick });
+  player.setLook(save.look);
+  mp.updateMe();
+  persist();
+  show(ui.nickRow, false);
+  ui.nick.blur();
+  const { level, timeMs } = pendingScore;
+  pendingScore = null;
+  ui.winTitle.textContent = `${nick} escaped! 🎉`;
+  saveScore(level, nick, timeMs);
+}
+
+ui.nickSave.addEventListener("click", saveNickname);
+ui.nick.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveNickname();
+});
+
+// After a level, offer the next one.
+function nextLevel() {
+  return LEVELS.find((l) => l.id === save.level + 1);
+}
+
+ui.nextLevel.addEventListener("click", () => {
+  const next = nextLevel();
+  if (!next) return;
+  if (race?.phase === "finished") race = null;
+  show(ui.win, false);
+  switchLevel(next.id);
+  state = "menu";
+  play();
+});
 
 function openLeaderboard(level = save.level) {
   if (state === "countdown") return;

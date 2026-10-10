@@ -144,9 +144,17 @@
         <div><span>Dash</span><b>⚡ <span id="win-dash"></span></b></div>
       </div>
       <p id="win-rank" class="win-rank"></p>
+      <div id="nick-row" class="hidden">
+        <div class="join-row nick-row">
+          <input id="nick" type="text" maxlength="12" placeholder="Nickname" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-label="Nickname">
+          <button id="nick-save" class="big compact">Save</button>
+        </div>
+        <p class="mp-note small-print">Pick a nickname. Everyone can see the leaderboard.</p>
+      </div>
       <ol id="race-results" class="race-results hidden"></ol>
       <p id="win-tag" class="tag">Run it again — you keep all your Dash, so you'll be even faster!</p>
       <button id="again" class="big">Run again</button>
+      <button id="next-level" class="secondary wide next-btn hidden"></button>
       <button id="race-again" class="secondary wide hidden">🏁 Race again</button>
       <div class="row">
         <button id="win-lb" class="secondary lb-btn">🏆 Leaderboard</button>

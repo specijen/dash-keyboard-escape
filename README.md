@@ -51,6 +51,8 @@ address; they talk to each other without Supabase.
 **🏆 Leaderboard** on the menu shows the 10 fastest players on each level, for everyone
 who plays the game. When you escape, your time is sent automatically (if you've set a name)
 and the win screen shows your place. Each player keeps one entry per level: their best time.
+A player with no name who makes the top 10 is asked for a nickname on the win screen.
+After Level 1, the win screen also offers a button straight to Level 2.
 
 It's stored in the Supabase project. One-time setup: in the Supabase dashboard open
 **SQL Editor → New query**, paste in `supabase/leaderboard.sql` and press **Run**.

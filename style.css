@@ -180,6 +180,8 @@ button {
 .lb-list .dot { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.12); }
 .lb-list .time { font-variant-numeric: tabular-nums; }
 .small-print { font-size: 12px; font-weight: 600; }
+.join-row.nick-row input { letter-spacing: 1px; text-transform: none; font-size: 20px; }
+.next-btn { background: #fff3c4; font-size: 17px; padding: 12px; }
 .win-rank { margin: 8px 0 0; font-weight: 800; font-size: 16px; min-height: 1em; }
 .win-rank:empty { display: none; }
 
