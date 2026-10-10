@@ -418,22 +418,29 @@ async function postScore(seconds) {
   const timeMs = Math.round(seconds * 1000);
   // The board keeps each player's best, so it's the best time that places.
   const bestMs = Math.min(timeMs, Math.round((save.bests[level] ?? Infinity) * 1000));
-  if (bestMs < MIN_TIME_MS) return;
+  if (bestMs < MIN_TIME_MS) {
+    ui.winRank.textContent = "Runs under 15 seconds can't go on the leaderboard.";
+    return;
+  }
   if (!name) {
-    ui.winRank.textContent = "Checking the leaderboard…";
+    // Ask straight away; the place fills in when the check comes back (it can be slow).
+    const pending = { level, timeMs: bestMs };
+    pendingScore = pending;
+    ui.winRank.textContent = "🏆 Add a nickname to put your time on the leaderboard:";
+    ui.nick.value = "";
+    show(ui.nickRow, true);
     try {
       const rank = await fetchRank(level, bestMs);
+      if (pendingScore !== pending) return; // already saved, or a new run started
       if (rank <= 10) {
-        pendingScore = { level, timeMs: bestMs };
         ui.winRank.textContent = `🏆 That's #${rank} on the leaderboard! Add a nickname to save it:`;
-        ui.nick.value = "";
-        show(ui.nickRow, true);
-      } else {
+      } else if (document.activeElement !== ui.nick && !ui.nick.value) {
+        pendingScore = null;
+        show(ui.nickRow, false);
         ui.winRank.textContent = "Add your name in 🎨 Avatar & name to get on the leaderboard!";
       }
     } catch (err) {
-      console.warn("Leaderboard:", err);
-      ui.winRank.textContent = friendlyError(err);
+      console.warn("Leaderboard:", err); // keep the nickname box: saving may still work
     }
     return;
   }
@@ -444,12 +451,18 @@ async function saveScore(level, name, timeMs, notThisRun = false) {
   ui.winRank.textContent = "Saving to the leaderboard…";
   try {
     await submitScore({ level, playerId: save.playerId, name, timeMs, dash: save.dash, shirt: save.look.shirt });
+  } catch (err) {
+    console.warn("Leaderboard:", err);
+    ui.winRank.textContent = friendlyError(err);
+    return;
+  }
+  ui.winRank.textContent = "✅ Saved to the leaderboard!";
+  try {
     const rank = await fetchRank(level, timeMs);
     const lead = notThisRun ? "Your best time is" : "You're";
     ui.winRank.textContent = rank <= 10 ? `🏆 ${lead} #${rank} on the leaderboard!` : `${lead} #${rank} on the leaderboard. Keep going!`;
   } catch (err) {
-    console.warn("Leaderboard:", err);
-    ui.winRank.textContent = friendlyError(err);
+    console.warn("Leaderboard:", err); // saved fine; just couldn't fetch the place
   }
 }
 
