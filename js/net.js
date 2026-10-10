@@ -26,7 +26,7 @@ export function newPlayerId() {
 // ---- Supabase Realtime -------------------------------------------------------------------
 let clientPromise = null;
 
-function loadSupabase() {
+export function loadSupabase() {
   clientPromise ??= new Promise((resolve, reject) => {
     if (window.supabase) return resolve(window.supabase);
     const s = document.createElement("script");

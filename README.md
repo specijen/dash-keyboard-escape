@@ -46,6 +46,17 @@ Realtime messages a month.
 For testing on one computer, open the game in two tabs with `?net=local` on the
 address; they talk to each other without Supabase.
 
+## Leaderboard
+
+**🏆 Leaderboard** on the menu shows the 10 fastest players on each level, for everyone
+who plays the game. When you escape, your time is sent automatically (if you've set a name)
+and the win screen shows your place. Each player keeps one entry per level: their best time.
+
+It's stored in the Supabase project. One-time setup: in the Supabase dashboard open
+**SQL Editor → New query**, paste in `supabase/leaderboard.sql` and press **Run**.
+To remove an entry (say, a rude name), open **Table Editor → leaderboard**, select the row
+and delete it.
+
 ## The levels
 
 Pick a level on the menu. Dash is shared between levels; best times are kept for each.
@@ -71,7 +82,7 @@ Smaller keys, longer hops, and three new tricks.
 
 In Play together, a race always runs on the host's level and brings everyone onto it.
 
-Progress (Dash, checkpoint, best time) is saved on each device.
+Progress (Dash, checkpoint, best times) is saved on each device; leaderboard times are online.
 
 ## Changing the course
 
@@ -95,6 +106,8 @@ js/multiplayer.js  rooms, lobby, sharing your position, race messages
 js/net.js        connection: Supabase Realtime, or local tabs for testing
 js/remote.js     draws and smooths the other players
 js/config.js     Supabase project URL and publishable key
+js/leaderboard.js  public leaderboard: submit a time, top 10, your place
+supabase/        one-time SQL setup for the leaderboard table
 sw.js            service worker: always-fresh files, offline copy
 vendor/          three.js r160 and supabase-js 2.116.0 (MIT licences)
 ```

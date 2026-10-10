@@ -51,7 +51,10 @@
       <div id="levels" class="levels"></div>
       <button id="play" class="big">Play</button>
       <button id="open-mp" class="secondary wide mp-btn">👥 Play together</button>
-      <button id="open-avatar" class="secondary wide">🎨 Avatar &amp; name</button>
+      <div class="row two">
+        <button id="open-avatar" class="secondary">🎨 Avatar &amp; name</button>
+        <button id="open-lb" class="secondary lb-btn">🏆 Leaderboard</button>
+      </div>
       <div class="row">
         <button id="restart" class="secondary">Back to start</button>
         <button id="reset" class="secondary danger">Reset everything</button>
@@ -120,6 +123,18 @@
     </div>
   </div>
 
+  <div id="lb" class="overlay hidden">
+    <div class="card">
+      <div class="logo small">🏆 Leaderboard</div>
+      <div id="lb-tabs" class="lb-tabs"></div>
+      <div id="lb-title" class="room-label"></div>
+      <ol id="lb-list" class="race-results lb-list"></ol>
+      <p id="lb-note" class="mp-note"></p>
+      <p class="mp-note small-print">Fastest escape for each player. Everyone can see these names.</p>
+      <button id="lb-back" class="secondary wide">← Back to menu</button>
+    </div>
+  </div>
+
   <div id="win" class="overlay hidden">
     <div class="card">
       <div id="win-title" class="logo">You escaped! 🎉</div>
@@ -128,11 +143,15 @@
         <div><span>Best</span><b id="win-best"></b></div>
         <div><span>Dash</span><b>⚡ <span id="win-dash"></span></b></div>
       </div>
+      <p id="win-rank" class="win-rank"></p>
       <ol id="race-results" class="race-results hidden"></ol>
       <p id="win-tag" class="tag">Run it again — you keep all your Dash, so you'll be even faster!</p>
       <button id="again" class="big">Run again</button>
       <button id="race-again" class="secondary wide hidden">🏁 Race again</button>
-      <button id="win-menu" class="secondary wide">← Menu</button>
+      <div class="row">
+        <button id="win-lb" class="secondary lb-btn">🏆 Leaderboard</button>
+        <button id="win-menu" class="secondary">← Menu</button>
+      </div>
     </div>
   </div>
 

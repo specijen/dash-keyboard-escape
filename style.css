@@ -161,6 +161,28 @@ button {
 .level-btn span { font-size: 13px; font-weight: 700; color: #5a6080; }
 .level-btn.on { background: #fff3c4; border-color: var(--ink); }
 
+/* ---- Leaderboard ---- */
+.row.two { margin-top: 10px; }
+.lb-btn { background: #fff3c4; }
+.lb-tabs { display: flex; gap: 8px; justify-content: center; margin: 4px 0 10px; }
+.lb-tab {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: #eef0f7;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 15px;
+}
+.lb-tab.on { background: var(--ink); color: #fff; }
+.lb-list { max-width: 380px; min-height: 40px; }
+.lb-list .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lb-list .who span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-list .dot { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.12); }
+.lb-list .time { font-variant-numeric: tabular-nums; }
+.small-print { font-size: 12px; font-weight: 600; }
+.win-rank { margin: 8px 0 0; font-weight: 800; font-size: 16px; min-height: 1em; }
+.win-rank:empty { display: none; }
+
 /* ---- Play together ---- */
 .middle-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .room-chip {

@@ -7,6 +7,8 @@ import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { OPTIONS, cleanLook, cleanName, randomLook } from "./avatar.js";
 import { watchForUpdates } from "./update.js";
 import { Multiplayer } from "./multiplayer.js";
+import { newPlayerId } from "./net.js";
+import { submitScore, fetchTop, fetchRank, friendlyError, MIN_TIME_MS } from "./leaderboard.js";
 
 const STEP = 1 / 120;
 const BASE_SPEED = 8;
@@ -26,7 +28,8 @@ const ui = {
   mpJoin: $("mp-join"), mpError: $("mp-error"), mpRoom: $("mp-room"), mpStatus: $("mp-status"), mpPlayers: $("mp-players"),
   mpRace: $("mp-race"), mpWait: $("mp-wait"), mpPlay: $("mp-play"), mpLeave: $("mp-leave"), mpBack: $("mp-back"),
   roomChip: $("room-chip"), roomChipText: $("room-chip-text"), countdown: $("countdown"),
-  levels: $("levels"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
+  levels: $("levels"), lb: $("lb"), lbTabs: $("lb-tabs"), lbTitle: $("lb-title"), lbList: $("lb-list"), lbNote: $("lb-note"),
+  lbBack: $("lb-back"), openLb: $("open-lb"), winLb: $("win-lb"), winRank: $("win-rank"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
@@ -46,6 +49,8 @@ if ("best" in save) {
   delete save.best;
 }
 save.level = levelById(save.level).id;
+// A random id for this device, so the leaderboard keeps one best time per player.
+if (typeof save.playerId !== "string" || save.playerId.length < 8) save.playerId = newPlayerId();
 function persist() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
@@ -230,17 +235,21 @@ function show(el, visible) {
   el.classList.toggle("hidden", !visible);
 }
 
+// Leaving the win screen: the next run starts from START, not on top of the finish key.
+function leaveWin() {
+  if (state !== "won") return;
+  if (race?.phase === "finished") race = null;
+  world.setCheckpointReached(0);
+  respawn();
+}
+
 function openMenu() {
   if (state === "countdown") return;
   // Close whatever screen we came from so the menu is never hidden underneath it.
   show(ui.mp, false);
   show(ui.win, false);
-  if (state === "won") {
-    // Leaving the win screen: start the next run from START, not on top of ESC.
-    if (race?.phase === "finished") race = null;
-    world.setCheckpointReached(0);
-    respawn();
-  }
+  show(ui.lb, false);
+  leaveWin();
   state = "menu";
   input.enabled = false;
   input.release();
@@ -294,6 +303,7 @@ function win() {
   ui.winBest.textContent = fmt(save.bests[save.level]);
   ui.winDash.textContent = save.dash;
   renderResults();
+  postScore(save.runTime);
   save.cp = 0;
   save.runTime = 0;
   persist();
@@ -388,6 +398,101 @@ ui.random.addEventListener("click", () => {
 ui.avatarDone.addEventListener("click", closeAvatar);
 ui.openAvatar.addEventListener("click", () => openAvatar(false));
 
+// ---- Public leaderboard -------------------------------------------------------------------------
+let boardLevel = 1;
+
+// Send a finished run to the leaderboard and show where it placed on the win screen.
+async function postScore(seconds) {
+  const level = save.level;
+  const name = save.look?.name;
+  ui.winRank.textContent = "";
+  if (!name) {
+    ui.winRank.textContent = "Add your name in 🎨 Avatar & name to get on the leaderboard!";
+    return;
+  }
+  const timeMs = Math.round(seconds * 1000);
+  if (timeMs < MIN_TIME_MS) return;
+  ui.winRank.textContent = "Saving to the leaderboard…";
+  try {
+    await submitScore({ level, playerId: save.playerId, name, timeMs, dash: save.dash, shirt: save.look.shirt });
+    // The board keeps each player's best, so report where the best time sits.
+    const bestMs = Math.min(timeMs, Math.round((save.bests[level] ?? Infinity) * 1000));
+    const rank = await fetchRank(level, bestMs);
+    const lead = bestMs < timeMs ? "Your best time is" : "You're";
+    ui.winRank.textContent = rank <= 10 ? `🏆 ${lead} #${rank} on the leaderboard!` : `${lead} #${rank} on the leaderboard. Keep going!`;
+  } catch (err) {
+    console.warn("Leaderboard:", err);
+    ui.winRank.textContent = friendlyError(err);
+  }
+}
+
+function openLeaderboard(level = save.level) {
+  if (state === "countdown") return;
+  if (state === "avatar") closeAvatar();
+  show(ui.menu, false);
+  show(ui.win, false);
+  show(ui.mp, false);
+  leaveWin();
+  state = "board";
+  input.enabled = false;
+  input.release();
+  show(ui.lb, true);
+  loadBoard(level);
+}
+
+async function loadBoard(level) {
+  boardLevel = level;
+  ui.lbTabs.replaceChildren(
+    ...LEVELS.map((lvl) => {
+      const b = document.createElement("button");
+      b.className = "lb-tab" + (lvl.id === level ? " on" : "");
+      b.textContent = `Level ${lvl.id}`;
+      b.addEventListener("click", () => loadBoard(lvl.id));
+      return b;
+    }),
+  );
+  ui.lbTitle.textContent = levelById(level).name;
+  ui.lbList.replaceChildren();
+  ui.lbNote.classList.remove("error");
+  ui.lbNote.textContent = "Loading…";
+  try {
+    const rows = await fetchTop(level);
+    if (boardLevel !== level) return; // switched tabs while loading
+    ui.lbNote.textContent = rows.length ? "" : "No times yet. Be the first to escape!";
+    ui.lbList.replaceChildren(
+      ...rows.map((r, i) => {
+        const li = document.createElement("li");
+        if (r.player_id === save.playerId) li.className = "me";
+        const who = document.createElement("span");
+        who.className = "who";
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dot.style.background = /^#[0-9a-f]{6}$/i.test(r.shirt ?? "") ? r.shirt : "#2f80ed";
+        const name = document.createElement("span");
+        name.textContent = `${medal(i + 1)} ${cleanName(r.name) || "Player"}${r.player_id === save.playerId ? " (you)" : ""}`;
+        who.append(dot, name);
+        const time = document.createElement("span");
+        time.className = "time";
+        time.textContent = fmt(r.time_ms / 1000);
+        li.append(who, time);
+        return li;
+      }),
+    );
+  } catch (err) {
+    if (boardLevel !== level) return;
+    console.warn("Leaderboard:", err);
+    ui.lbNote.textContent = friendlyError(err);
+    ui.lbNote.classList.add("error");
+  }
+}
+
+ui.openLb.addEventListener("click", () => openLeaderboard());
+ui.winLb.addEventListener("click", () => openLeaderboard());
+ui.lbBack.addEventListener("click", openMenu);
+ui.lb.addEventListener("click", (e) => {
+  if (e.target === ui.lb) openMenu();
+});
+
 // ---- Level picker ---------------------------------------------------------------------------
 function switchLevel(id, fromMenu = true) {
   if (id === save.level) return;
@@ -430,7 +535,7 @@ ui.restart.addEventListener("click", () => {
 });
 ui.reset.addEventListener("click", () => {
   if (!confirm("Reset everything? Your Dash and best time will go back to zero.")) return;
-  save = { ...fresh(), muted: save.muted, look: save.look, level: save.level };
+  save = { ...fresh(), muted: save.muted, look: save.look, level: save.level, playerId: save.playerId };
   startOver();
   renderHud();
   play();
@@ -453,7 +558,7 @@ ui.sound.addEventListener("click", () => {
 });
 addEventListener("keydown", (e) => {
   if (e.target.closest?.("input")) return;
-  if (state === "lobby" && e.code === "Escape") return openMenu();
+  if ((state === "lobby" || state === "board") && e.code === "Escape") return openMenu();
   if (state === "avatar" && e.code === "Escape") return closeAvatar();
   if (e.code === "Escape" || e.code === "KeyP") state === "playing" ? openMenu() : state === "menu" && play();
 });

@@ -17,6 +17,7 @@ const FILES = [
   "js/net.js",
   "js/remote.js",
   "js/multiplayer.js",
+  "js/leaderboard.js",
 ];
 const EVERY = 3 * 60 * 1000;
 
