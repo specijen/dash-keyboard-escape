@@ -22,7 +22,7 @@ function session(key, value) {
 }
 
 export class Multiplayer {
-  // hooks: getLook(), onRaceStart(id, delayMs), onFinish({ raceId, id, name, time }), toast(text), onChange()
+  // hooks: getLook(), getLevel(), onRaceStart(id, delayMs, level), onFinish({ raceId, id, name, time }), toast(text), onChange()
   constructor(scene, hooks) {
     this.hooks = hooks;
     this.remotes = new Remotes(scene);
@@ -115,9 +115,12 @@ export class Multiplayer {
 
   receive(event, payload) {
     if (!payload || typeof payload !== "object") return;
-    if (event === "state") this.remotes.update(payload);
+    if (event === "state") {
+      if (payload.l !== undefined && payload.l !== this.hooks.getLevel()) this.remotes.hide(payload.id);
+      else this.remotes.update(payload);
+    }
     else if (event === "race" && payload.action === "start") {
-      this.hooks.onRaceStart(String(payload.id), Math.min(Math.max(+payload.delay || 0, 0), 5000));
+      this.hooks.onRaceStart(String(payload.id), Math.min(Math.max(+payload.delay || 0, 0), 5000), Number(payload.level) || 0);
     } else if (event === "finish") {
       const time = +payload.time;
       if (!Number.isFinite(time)) return;
@@ -130,8 +133,9 @@ export class Multiplayer {
     if (!this.room || !this.isHost) return;
     const id = Math.random().toString(36).slice(2, 8);
     const delay = 3500;
-    this.room.send("race", { action: "start", id, delay });
-    this.hooks.onRaceStart(id, delay);
+    const level = this.hooks.getLevel();
+    this.room.send("race", { action: "start", id, delay, level });
+    this.hooks.onRaceStart(id, delay, level);
   }
 
   sendFinish(raceId, time) {
@@ -154,6 +158,7 @@ export class Multiplayer {
       v: [r(player.vel.x), r(player.vel.y), r(player.vel.z)],
       f: r(player.facing),
       g: player.grounded,
+      l: this.hooks.getLevel(),
     });
   }
 }

@@ -50,6 +50,15 @@ export class Remotes {
     r.mesh.visible = true;
   }
 
+  // Seen on a different level from ours: don't draw them until they're back on ours.
+  hide(id) {
+    const r = this.players.get(id);
+    if (!r) return;
+    r.pos = null;
+    r.last = null;
+    if (r.mesh) r.mesh.visible = false;
+  }
+
   animate(dt) {
     const now = performance.now();
     for (const r of this.players.values()) {

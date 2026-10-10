@@ -1,5 +1,5 @@
 import * as THREE from "../vendor/three.module.js";
-import { buildCourse, STAGES } from "./levels.js";
+import { LEVELS, levelById } from "./levels.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Input } from "./input.js";
@@ -26,19 +26,26 @@ const ui = {
   mpJoin: $("mp-join"), mpError: $("mp-error"), mpRoom: $("mp-room"), mpStatus: $("mp-status"), mpPlayers: $("mp-players"),
   mpRace: $("mp-race"), mpWait: $("mp-wait"), mpPlay: $("mp-play"), mpLeave: $("mp-leave"), mpBack: $("mp-back"),
   roomChip: $("room-chip"), roomChipText: $("room-chip-text"), countdown: $("countdown"),
-  raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
+  levels: $("levels"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
 // ---- Saved progress (per device) -------------------------------------------
-const fresh = () => ({ dash: 0, cp: 0, runTime: 0, best: null, wins: 0, muted: false });
+// cp / runTime are the run in progress on `level`; best times are kept per level.
+const fresh = () => ({ dash: 0, level: 1, cp: 0, runTime: 0, bests: {}, wins: 0, muted: false });
 let save = fresh();
 try {
   save = { ...save, ...JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") };
 } catch {}
 // `look` is only missing on a brand-new device; first Play opens the picker then.
 if (save.look) save.look = cleanLook(save.look);
-if (!(save.best >= 10)) save.best = null; // an old bug could save a near-zero best time
+if (!save.bests || typeof save.bests !== "object") save.bests = {};
+if ("best" in save) {
+  // Older saves had one best time (Level 1). An old bug could save a near-zero one.
+  if (save.best >= 10 && !save.bests[1]) save.bests[1] = save.best;
+  delete save.best;
+}
+save.level = levelById(save.level).id;
 function persist() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
@@ -53,8 +60,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fd3ff);
-scene.fog = new THREE.Fog(0x8fd3ff, 60, 170);
+scene.background = new THREE.Color();
+scene.fog = new THREE.Fog(0xffffff, 60, 170);
 
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8877cc, 1.6));
@@ -64,8 +71,19 @@ sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, { left: -25, right: 25, top: 25, bottom: -25, near: 1, far: 80 });
 scene.add(sun, sun.target);
 
-const course = buildCourse();
-const world = new World(scene, course);
+let course = null;
+let world = null;
+
+// Build a level's world (and its sky). Progress on the old level isn't kept: switching
+// levels starts the new one from START.
+function buildLevel(id) {
+  world?.dispose();
+  course = levelById(id).build();
+  world = new World(scene, course);
+  scene.background.set(course.sky);
+  scene.fog.color.set(course.sky);
+}
+buildLevel(save.level);
 const player = new Player(scene, save.look);
 const input = new Input(canvas, ui);
 
@@ -195,7 +213,7 @@ function physicsStep() {
   if (!g) return;
   if (g.stage !== shownStage) {
     shownStage = g.stage;
-    ui.stage.textContent = g.stage ? `Stage ${g.stage} · ${STAGES[g.stage].name}` : "Start";
+    ui.stage.textContent = g.stage ? `Stage ${g.stage} · ${course.stages[g.stage].name}` : levelById(save.level).name;
   }
   if (g.type === "checkpoint" && g.cp > save.cp) {
     save.cp = g.cp;
@@ -228,6 +246,7 @@ function openMenu() {
   input.release();
   cam.resumeYaw = cam.yaw;
   ui.play.textContent = save.cp > 0 || save.runTime > 0 ? "Continue" : "Play";
+  renderLevels();
   show(ui.menu, true);
   persist();
 }
@@ -267,11 +286,12 @@ function win() {
     save.runTime = race.myTime; // the race clock is the run time
   }
   save.wins += 1;
-  const newBest = save.best === null || save.runTime < save.best;
-  if (newBest) save.best = save.runTime;
+  const best = save.bests[save.level];
+  const newBest = !best || save.runTime < best;
+  if (newBest) save.bests[save.level] = save.runTime;
   ui.winTitle.textContent = save.look?.name ? `${save.look.name} escaped! 🎉` : "You escaped! 🎉";
   ui.winTime.textContent = fmt(save.runTime) + (newBest ? "  ⭐ New best!" : "");
-  ui.winBest.textContent = fmt(save.best);
+  ui.winBest.textContent = fmt(save.bests[save.level]);
   ui.winDash.textContent = save.dash;
   renderResults();
   save.cp = 0;
@@ -368,6 +388,41 @@ ui.random.addEventListener("click", () => {
 ui.avatarDone.addEventListener("click", closeAvatar);
 ui.openAvatar.addEventListener("click", () => openAvatar(false));
 
+// ---- Level picker ---------------------------------------------------------------------------
+function switchLevel(id, fromMenu = true) {
+  if (id === save.level) return;
+  save.level = id;
+  save.cp = 0;
+  save.runTime = 0;
+  buildLevel(id);
+  world.setCheckpointReached(0);
+  respawn();
+  shownStage = -1;
+  ui.stage.textContent = levelById(id).name;
+  persist();
+  if (fromMenu) {
+    ui.play.textContent = "Play";
+    renderLevels();
+  }
+}
+
+function renderLevels() {
+  ui.levels.replaceChildren(
+    ...LEVELS.map((lvl) => {
+      const b = document.createElement("button");
+      b.className = "level-btn" + (lvl.id === save.level ? " on" : "");
+      const title = document.createElement("b");
+      title.textContent = `${lvl.id}. ${lvl.name}`;
+      const sub = document.createElement("span");
+      const best = save.bests[lvl.id];
+      sub.textContent = best ? `${lvl.tag} · Best ${fmt(best)}` : lvl.tag;
+      b.append(title, sub);
+      b.addEventListener("click", () => switchLevel(lvl.id));
+      return b;
+    }),
+  );
+}
+
 ui.play.addEventListener("click", play);
 ui.restart.addEventListener("click", () => {
   startOver();
@@ -375,7 +430,7 @@ ui.restart.addEventListener("click", () => {
 });
 ui.reset.addEventListener("click", () => {
   if (!confirm("Reset everything? Your Dash and best time will go back to zero.")) return;
-  save = { ...fresh(), muted: save.muted, look: save.look };
+  save = { ...fresh(), muted: save.muted, look: save.look, level: save.level };
   startOver();
   renderHud();
   play();
@@ -426,6 +481,7 @@ let race = null;
 
 const mp = new Multiplayer(scene, {
   getLook: () => save.look,
+  getLevel: () => save.level,
   onRaceStart: startRaceCountdown,
   onFinish: ({ raceId, id, name, time }) => {
     if (!race || race.id !== raceId || race.results.has(id)) return;
@@ -441,8 +497,9 @@ const mp = new Multiplayer(scene, {
 const ordinal = (n) => n + (["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) || n % 10 > 3 ? 0 : n % 10]);
 const medal = (n) => ["🥇", "🥈", "🥉"][n - 1] ?? `${n}.`;
 
-function startRaceCountdown(id, delay) {
+function startRaceCountdown(id, delay, level) {
   if (state === "avatar") closeAvatar();
+  if (level && level !== save.level) switchLevel(level, false);
   for (const el of [ui.menu, ui.win, ui.mp]) show(el, false);
   race = { id, phase: "countdown", goAt: performance.now() + delay, myTime: null, results: new Map() };
   save.cp = 0;
@@ -541,6 +598,7 @@ function renderMp() {
     }),
   );
   show(ui.mpRace, mp.isHost && mp.status === "connected");
+  ui.mpRace.textContent = `🏁 Start race · Level ${save.level}`;
   show(ui.mpWait, !mp.isHost && mp.status === "connected");
   ui.roomChipText.textContent = `${mp.code} · ${Math.max(1, mp.roster.length)}`;
   if (state === "won") renderResults();
@@ -665,4 +723,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Handy for testing from the browser console.
-window.game = { mp, get race() { return race; }, checkForUpdate, openAvatar, closeAvatar, get save() { return save; }, input, player, world, course, cam, physicsStep, STEP, get state() { return state; } };
+window.game = { get course() { return course; }, get world() { return world; }, switchLevel, mp, get race() { return race; }, checkForUpdate, openAvatar, closeAvatar, get save() { return save; }, input, player, cam, physicsStep, STEP, get state() { return state; } };

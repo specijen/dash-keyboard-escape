@@ -143,6 +143,24 @@ button {
 }
 @keyframes bob { 50% { transform: translate(-50%, 4px); } }
 
+/* ---- Level picker ---- */
+.levels { display: flex; gap: 10px; margin: 0 0 12px; }
+.level-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #eef0f7;
+  color: var(--ink);
+  text-align: left;
+  border: 3px solid transparent;
+}
+.level-btn b { font-size: 16px; font-weight: 900; }
+.level-btn span { font-size: 13px; font-weight: 700; color: #5a6080; }
+.level-btn.on { background: #fff3c4; border-color: var(--ink); }
+
 /* ---- Play together ---- */
 .middle-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .room-chip {
@@ -457,6 +475,9 @@ body.picking #hud, body.picking #jump, body.picking #toast { visibility: hidden;
   .row { margin-top: 8px; }
   .secondary { padding: 8px; }
   .controls { margin-top: 10px; font-size: 12px; }
+  .levels { margin-bottom: 8px; }
+  .level-btn { padding: 6px 10px; }
+  .level-btn b { font-size: 14px; }
   .room-code { font-size: 34px; letter-spacing: 8px; }
   .players { margin: 6px 0; }
   .players li { padding: 3px 10px 3px 4px; font-size: 14px; }

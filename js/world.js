@@ -1,5 +1,5 @@
 import * as THREE from "../vendor/three.module.js";
-import { STAGES, COLORS } from "./levels.js";
+import { COLORS } from "./levels.js";
 
 const CRUMBLE_WARN = 0.8; // seconds a crumble key shakes before it drops
 const CRUMBLE_GONE = 2.5; // seconds before it comes back
@@ -77,6 +77,7 @@ export class World {
   constructor(scene, course) {
     this.scene = scene;
     this.course = course;
+    this.objects = []; // everything we add to the scene, so a level can be cleared away
     this.keys = course.keys.map((k) => this.makeKey(k));
     this.time = 0;
 
@@ -84,12 +85,13 @@ export class World {
       const m = signMesh(s);
       m.position.set(s.x, s.y, s.z);
       scene.add(m);
+      this.objects.push(m);
     }
 
   }
 
   makeKey(def) {
-    const color = COLORS[def.type] ?? STAGES[def.stage].color;
+    const color = COLORS[def.type] ?? this.course.stages[def.stage].color;
     const side = new THREE.MeshLambertMaterial({ color: shade(color, -0.12) });
     const topMat = new THREE.MeshLambertMaterial({ map: keyTexture(def.label, def.w, def.d, color) });
     if (def.type === "lava") {
@@ -99,7 +101,9 @@ export class World {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(def.w, def.h, def.d), [side, side, topMat, side, side, side]);
     mesh.castShadow = def.type !== "lava";
     mesh.receiveShadow = true;
+    if (def.blink) for (const m of [side, topMat]) m.transparent = true;
     this.scene.add(mesh);
+    this.objects.push(mesh);
 
     const key = {
       ...def,
@@ -142,6 +146,13 @@ export class World {
         const { axis, amp, period, phase } = key.move;
         key.pos[axis] = key.base[axis] + Math.sin((this.time / period) * Math.PI * 2 + phase) * amp;
       }
+      if (key.blink) {
+        // Solid for `on` seconds, gone for `off` seconds; flickers just before it vanishes.
+        const { on, off, phase } = key.blink;
+        const t = (this.time + phase) % (on + off);
+        key.solid = t < on;
+        key.blinkWarn = key.solid && t > on - 0.5;
+      }
       const c = key.crumble;
       if (c.state !== "idle") {
         c.t += dt;
@@ -170,12 +181,32 @@ export class World {
         key.mesh.position.x += (Math.random() - 0.5) * 0.15;
         key.mesh.position.z += (Math.random() - 0.5) * 0.15;
       }
+      if (key.blink) {
+        const opacity = !key.solid ? 0.12 : key.blinkWarn ? (Math.sin(this.time * 40) > 0 ? 0.9 : 0.35) : 1;
+        for (const m of new Set(key.mesh.material)) m.opacity = opacity;
+      }
       if (key.flag) key.flag.userData.flag.rotation.y = Math.sin(this.time * 3 + key.cp) * 0.3;
       if (key.type === "lava") {
         const glow = 0.5 + 0.5 * Math.sin(this.time * 6);
         key.mesh.material[0].emissive.setRGB(0.5 + glow * 0.3, 0.05, 0);
       }
     }
+  }
+
+  // Remove this level from the scene and free its GPU memory.
+  dispose() {
+    for (const obj of this.objects) {
+      obj.removeFromParent();
+      obj.traverse((o) => {
+        o.geometry?.dispose();
+        for (const m of [o.material].flat()) {
+          m?.map?.dispose();
+          m?.dispose();
+        }
+      });
+    }
+    this.objects = [];
+    this.keys = [];
   }
 
   setCheckpointReached(cp) {

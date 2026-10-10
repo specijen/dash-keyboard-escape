@@ -46,7 +46,11 @@ Realtime messages a month.
 For testing on one computer, open the game in two tabs with `?net=local` on the
 address; they talk to each other without Supabase.
 
-## The course
+## The levels
+
+Pick a level on the menu. Dash is shared between levels; best times are kept for each.
+
+### Level 1: Keyboard Escape
 
 1. **Letter Row**: friendly hops across QWERTY.
 2. **Number Row**: yellow keys crumble, purple keys slide.
@@ -54,11 +58,24 @@ address; they talk to each other without Supabase.
 4. **Dash Gaps**: long jumps that need enough Dash (the signs say how much).
 5. **F-Key Tower**: climb the zig-zag stairs to the giant **ESC** key.
 
+### Level 2: Numpad Nightmare (harder)
+
+Smaller keys, longer hops, and three new tricks.
+
+1. **Numpad Zig-Zag**: hop left and right across the numpad; 5 and 2 crumble.
+2. **Blinking Keys**: cyan keys vanish for a second. They flicker just before they go.
+3. **Elevators**: ride the purple keys up to each ledge.
+4. **Lava Sweep**: red bars slide across the backspace key, then keys slide forwards and back.
+5. **Mega Gaps**: jumps that need ⚡70 and ⚡110.
+6. **Arrow Key Climb**: small sliding and blinking steps up to the **POWER** key.
+
+In Play together, a race always runs on the host's level and brings everyone onto it.
+
 Progress (Dash, checkpoint, best time) is saved on each device.
 
 ## Changing the course
 
-Everything lives in `js/levels.js` as plain numbers: key positions, gaps, which keys
+Everything lives in `js/levels.js` as plain numbers (one function per level): key positions, gaps, which keys
 crumble or move, and the Dash each sign asks for. The world builds itself from that list.
 
 ## Files
