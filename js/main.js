@@ -29,7 +29,7 @@ const ui = {
   mpRace: $("mp-race"), mpWait: $("mp-wait"), mpPlay: $("mp-play"), mpLeave: $("mp-leave"), mpBack: $("mp-back"),
   roomChip: $("room-chip"), roomChipText: $("room-chip-text"), countdown: $("countdown"),
   levels: $("levels"), lb: $("lb"), lbTabs: $("lb-tabs"), lbTitle: $("lb-title"), lbList: $("lb-list"), lbNote: $("lb-note"),
-  lbBack: $("lb-back"), nickRow: $("nick-row"), nick: $("nick"), nickSave: $("nick-save"), nextLevel: $("next-level"), openLb: $("open-lb"), winLb: $("win-lb"), winRank: $("win-rank"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
+  lbBack: $("lb-back"), lbHud: $("btn-lb"), nickRow: $("nick-row"), nick: $("nick"), nickSave: $("nick-save"), nextLevel: $("next-level"), openLb: $("open-lb"), winLb: $("win-lb"), winRank: $("win-rank"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
 
@@ -553,6 +553,7 @@ async function loadBoard(level) {
 }
 
 ui.openLb.addEventListener("click", () => openLeaderboard());
+ui.lbHud.addEventListener("click", () => openLeaderboard());
 ui.winLb.addEventListener("click", () => openLeaderboard());
 ui.lbBack.addEventListener("click", openMenu);
 ui.lb.addEventListener("click", (e) => {
