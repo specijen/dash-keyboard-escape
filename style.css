@@ -160,6 +160,11 @@ button {
 .level-btn b { font-size: 16px; font-weight: 900; }
 .level-btn span { font-size: 13px; font-weight: 700; color: #5a6080; }
 .level-btn.on { background: #fff3c4; border-color: var(--ink); }
+.level-btn.locked { opacity: 0.6; }
+@media (max-width: 600px) {
+  .levels { flex-wrap: wrap; }
+  .level-btn { flex: 1 1 40%; }
+}
 
 /* ---- Leaderboard ---- */
 .row.two { margin-top: 10px; }

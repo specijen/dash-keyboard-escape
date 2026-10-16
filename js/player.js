@@ -9,6 +9,7 @@ const BOUNCE_SPEED = 26;
 const COYOTE = 0.12; // grace period to jump after running off an edge
 const JUMP_BUFFER = 0.15; // a jump pressed just before landing still counts
 const STEP_UP = 0.6; // small ledges are climbed automatically
+const JELLY_SPEED = 8.5; // top speed while bouncing off a jelly key
 
 export class Player {
   constructor(scene, look) {
@@ -61,6 +62,10 @@ export class Player {
   // One fixed physics step. `move` is the stick/keys vector in camera space (length ≤ 1).
   // Pushes event names onto `events` for sounds and game logic.
   step(dt, move, yaw, speed, world, jumpPressed, events) {
+    if (this.jellyT > 0) {
+      this.jellyT -= dt;
+      speed = Math.min(speed, JELLY_SPEED);
+    }
     if (jumpPressed) this.jumpBuffer = JUMP_BUFFER;
     else this.jumpBuffer -= dt;
 
@@ -140,13 +145,25 @@ export class Player {
 
   land(key, world, events, fallSpeed) {
     if (key.type === "bounce") {
-      this.vel.y = BOUNCE_SPEED;
+      this.vel.y = key.bounceSpeed ?? BOUNCE_SPEED;
+      this.lastBounce = key;
+      // Jelly soaks up your speed: you bounce along at an easy pace, however much Dash you have.
+      if (key.jelly) {
+        this.jellyT = 1;
+        const hs = Math.hypot(this.vel.x, this.vel.z);
+        if (hs > JELLY_SPEED) {
+          this.vel.x *= JELLY_SPEED / hs;
+          this.vel.z *= JELLY_SPEED / hs;
+        }
+      }
+      world.stepOn(key);
       events.push("bounce");
       return;
     }
     this.vel.y = 0;
     this.grounded = true;
     this.ground = key;
+    this.jellyT = 0;
     world.stepOn(key);
   }
 

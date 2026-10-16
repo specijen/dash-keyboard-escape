@@ -52,7 +52,7 @@ address; they talk to each other without Supabase.
 who plays the game. When you escape, your time is sent automatically (if you've set a name)
 and the win screen shows your place. Each player keeps one entry per level: their best time.
 A player with no name who makes the top 10 is asked for a nickname on the win screen.
-After Level 1, the win screen also offers a button straight to Level 2.
+After each level, the win screen also offers a button straight to the next one.
 
 It's stored in the Supabase project. One-time setup: in the Supabase dashboard open
 **SQL Editor → New query**, paste in `supabase/leaderboard.sql` and press **Run**.
@@ -82,7 +82,22 @@ Smaller keys, longer hops, and three new tricks.
 5. **Mega Gaps**: jumps that need ⚡70 and ⚡110.
 6. **Arrow Key Climb**: small sliding and blinking steps up to the **POWER** key.
 
-In Play together, a race always runs on the host's level and brings everyone onto it.
+### Level 3: Keycap Dreams (unlocks after finishing Level 2)
+
+A cosy night-time level of real keycaps, made to be satisfying to play and listen to.
+Keycaps sit on red, brown and blue switches with a soft rainbow backlight; they sink when
+you land and spring back when you leave, and each switch colour sounds different. Soft rain
+plays in the background.
+
+1. **Switch Garden**: hop across keycaps on red (deep thock), brown (soft) and blue (clicky) switches.
+2. **Piano Keys**: each key plays the next note of a scale.
+3. **Bubble Wrap**: bubbles pop just after you step on them, so keep moving.
+4. **Jelly Hop**: wobbly jelly keys bounce you across at an easy pace, whatever your Dash.
+5. **Type THOCK**: hop on the letters T-H-O-C-K in order to open the gate.
+6. **Artisan Stairs**: colourful keycaps up to the giant **ENTER** key.
+
+In Play together, a race always runs on the host's level and brings everyone onto it
+(even a locked level, so the host can bring friends along).
 
 Progress (Dash, checkpoint, best times) is saved on each device; leaderboard times are online.
 
@@ -102,7 +117,7 @@ js/avatar.js     builds the blocky avatar: colours, hair, hats, faces, name tag
 js/world.js      builds keys from the course data; moving and crumbling keys
 js/levels.js     the course itself
 js/input.js      keyboard, mouse, joystick and jump button
-js/audio.js      synthesised sound effects
+js/audio.js      synthesised sound effects and Level 3's rain
 js/update.js     spots new versions and shows the Refresh banner
 js/multiplayer.js  rooms, lobby, sharing your position, race messages
 js/net.js        connection: Supabase Realtime, or local tabs for testing

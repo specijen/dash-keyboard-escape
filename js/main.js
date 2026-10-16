@@ -1,9 +1,9 @@
 import * as THREE from "../vendor/three.module.js";
-import { LEVELS, levelById } from "./levels.js";
+import { LEVELS, levelById, isLocked } from "./levels.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Input } from "./input.js";
-import { sfx, unlockAudio, setMuted } from "./audio.js";
+import { sfx, unlockAudio, setMuted, setAmbience } from "./audio.js";
 import { OPTIONS, cleanLook, cleanName, randomLook } from "./avatar.js";
 import { watchForUpdates } from "./update.js";
 import { Multiplayer } from "./multiplayer.js";
@@ -87,6 +87,7 @@ function buildLevel(id) {
   world = new World(scene, course);
   scene.background.set(course.sky);
   scene.fog.color.set(course.sky);
+  setAmbience(course.ambience ?? null);
 }
 buildLevel(save.level);
 const player = new Player(scene, save.look);
@@ -210,8 +211,24 @@ function physicsStep() {
       respawn();
       return;
     }
-    if (e === "click") sfx.keyClick(player.ground, player.impact);
+    if (e === "click") {
+      sfx.keyClick(player.ground, player.impact);
+      if (player.ground?.note) sfx.note(player.ground.note);
+    } else if (e === "bounce" && player.lastBounce?.jelly) sfx.jelly();
     else sfx[e]?.();
+  }
+
+  // Things the world did this step: keycaps springing up, bubbles popping, the typing puzzle.
+  for (const ev of world.takeEvents()) {
+    if (ev.type === "release") sfx.keyUp(ev.key);
+    else if (ev.type === "pop") sfx.pop();
+    else if (ev.type === "letter") {
+      sfx.note([523.25, 659.25, 783.99, 880, 1046.5][ev.progress - 1] ?? 1046.5);
+      toast([...ev.word].map((ch, i) => (i < ev.progress ? ch : "_")).join(" "));
+    } else if (ev.type === "gate") {
+      sfx.checkpoint();
+      toast("🔓 THOCK! The gate is open!", 2.5);
+    }
   }
 
   const g = player.ground;
@@ -492,7 +509,8 @@ ui.nick.addEventListener("keydown", (e) => {
 
 // After a level, offer the next one.
 function nextLevel() {
-  return LEVELS.find((l) => l.id === save.level + 1);
+  const next = LEVELS.find((l) => l.id === save.level + 1);
+  return next && !isLocked(next, save) ? next : null;
 }
 
 ui.nextLevel.addEventListener("click", () => {
@@ -576,6 +594,11 @@ ui.lb.addEventListener("click", (e) => {
 // ---- Level picker ---------------------------------------------------------------------------
 function switchLevel(id, fromMenu = true) {
   if (id === save.level) return;
+  // Locked levels can't be picked, but a race on the host's level still brings you along.
+  if (fromMenu && isLocked(levelById(id), save)) {
+    toast(levelById(id).lockText ?? "🔒 Locked", 2.2);
+    return;
+  }
   save.level = id;
   save.cp = 0;
   save.runTime = 0;
@@ -595,12 +618,13 @@ function renderLevels() {
   ui.levels.replaceChildren(
     ...LEVELS.map((lvl) => {
       const b = document.createElement("button");
-      b.className = "level-btn" + (lvl.id === save.level ? " on" : "");
+      const locked = isLocked(lvl, save);
+      b.className = "level-btn" + (lvl.id === save.level ? " on" : "") + (locked ? " locked" : "");
       const title = document.createElement("b");
       title.textContent = `${lvl.id}. ${lvl.name}`;
       const sub = document.createElement("span");
       const best = save.bests[lvl.id];
-      sub.textContent = best ? `${lvl.tag} · Best ${fmt(best)}` : lvl.tag;
+      sub.textContent = locked ? lvl.lockText : best ? `${lvl.tag} · Best ${fmt(best)}` : lvl.tag;
       b.append(title, sub);
       b.addEventListener("click", () => switchLevel(lvl.id));
       return b;

@@ -5,6 +5,9 @@
 //   type      normal | crumble | moving | blink | lava | bounce | checkpoint | finish
 //   move      { axis: "x" | "y" | "z", amp, period, phase } slides the key back and forth
 //   blink     { on, off, phase } seconds the key is there, then seconds it's gone
+// Level 3 extras (keycap style): switch red|brown|blue, note (Hz), pop, jelly + bounceSpeed,
+//   spell { word, i } (letters to type in order), gate (a wall that opens when the word is typed),
+//   press: false (keycap doesn't sink), plain (a plain block, not a keycap), color
 // Edit numbers here to change a course; the world builds itself from these lists.
 
 export const COLORS = {
@@ -217,10 +220,110 @@ function buildLevel2() {
   });
 }
 
+// ---- Level 3: Keycap Dreams (unlocks after Level 2) ------------------------------------------------
+// A cosy night-time level of real keycaps on clicky switches, made to be satisfying: keys sink
+// under you and spring back, piano keys play a scale, bubble wrap pops, jelly keys wobble, and
+// you type THOCK to open the gate. Soft rain plays in the background.
+function buildLevel3() {
+  const b = builder(3.8);
+  const { key, next, sign } = b;
+  const SW = ["red", "brown", "blue"];
+
+  key({ x: 0, z: 0, top: 0, w: 12, d: 10, label: "START", type: "checkpoint", cp: 0, switch: "brown" });
+  b.cursor = -5;
+  sign("Keycap Dreams", 0, 8, -6, "Level 3: press, pop and bounce. Listen!");
+
+  // Stage 1 — Switch Garden: keycaps on red, brown and blue switches. Each sounds different.
+  b.stage = 1;
+  let top = 0;
+  [..."ASDFGHJKL"].forEach((label, i) => {
+    top = 0.3 + i * 0.3;
+    next(1.8, { x: Math.sin(i * 0.9) * 2.6, top, label, switch: SW[i % 3] });
+  });
+
+  // Stage 2 — Piano Keys: each one plays the next note of the scale.
+  b.stage = 2;
+  next(1.8, { w: 9, d: 5, top, label: "SHIFT", type: "checkpoint", cp: 1, switch: "brown" });
+  sign("Piano keys", 0, top + 4.5, b.cursor + 1, "Play the scale!");
+  const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5];
+  ["C", "D", "E", "F", "G", "A", "B", "C"].forEach((label, i) => {
+    next(1.1, { w: 6, d: 2.6, top: top + i * 0.15, label, note: scale[i], switch: "red", color: "#fbfbf8" });
+  });
+  top += 7 * 0.15;
+
+  // Stage 3 — Bubble Wrap: bubbles pop just after you step on them. Keep moving!
+  b.stage = 3;
+  next(1.2, { w: 9, d: 5, top, label: "TAB", type: "checkpoint", cp: 2, switch: "brown" });
+  sign("Bubble wrap!", 0, top + 4.5, b.cursor + 1, "Don't stop or you'll drop");
+  for (let i = 0; i < 16; i++) {
+    next(0.3, { x: (i % 2 ? 1 : -1) * 1.5, w: 3, d: 3, h: 1.2, top, type: "crumble", pop: true, label: "" });
+  }
+
+  // Stage 4 — Jelly Hop: wobbly jelly keys bounce you across the gaps.
+  b.stage = 4;
+  next(0.6, { w: 9, d: 5, top, label: "POP", type: "checkpoint", cp: 3, switch: "brown" });
+  sign("Jelly keys", 0, top + 4.5, b.cursor + 1, "Boing across!");
+  ["#ff8fab", "#9bf6ff", "#caffbf", "#ffd6a5"].forEach((color, i) => {
+    // 6 units from one jelly to the next: a bounce at normal speed carries you about 6.4.
+    next(2.2, { w: 3.8, d: 3.8, top, type: "bounce", jelly: true, bounceSpeed: 16, color, label: "" });
+  });
+  next(2.2, { w: 9, d: 5, h: 6, top, label: "CMD", type: "checkpoint", cp: 4, switch: "brown" });
+
+  // Stage 5 — Type THOCK: hop on the letters in order to open the gate.
+  b.stage = 5;
+  const floor = next(0, { w: 12, d: 24, top, label: "", press: false, color: "#454b6b" });
+  const floorStart = floor.z + 12;
+  const letters = [["T", -3.6, 14], ["H", 3.6, 5], ["O", 0, 18.5], ["C", -3.6, 9], ["K", 3.6, 16]];
+  letters.forEach(([label, x, dz], i) => {
+    key({ x, z: floorStart - dz, top: top + 0.6, w: 2.6, d: 2.6, h: 0.6, label, spell: { word: "THOCK", i }, switch: "blue" });
+  });
+  key({ x: 0, z: floorStart - 23.5, top: top + 5, w: 12, d: 1, h: 5, plain: true, gate: "THOCK", color: "#2b2f45", label: "" });
+  sign("Type THOCK to open!", 0, top + 6.5, floorStart - 22.8, "Hop on the letters in order");
+
+  // Stage 6 — Artisan Stairs: fancy keycaps up to the giant ENTER key.
+  b.stage = 6;
+  next(0, { w: 9, d: 5, top, label: "CTRL", type: "checkpoint", cp: 5, switch: "brown" });
+  const artisan = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93", "#ff8fab", "#4cc9f0", "#f15bb5"];
+  artisan.forEach((color, i) => {
+    top += 1.3;
+    const o = { x: (i % 2 ? 1 : -1) * 2.3, top, w: 3.4, d: 3.4, label: "", color, switch: SW[i % 3] };
+    if (i % 3 === 2) Object.assign(o, { type: "moving", move: { axis: "x", amp: 1.6, period: 2.8, phase: i } });
+    next(0.7, o);
+  });
+  top += 1;
+  next(1.5, { w: 7, d: 7, top, h: 3, label: "ENTER", type: "finish", switch: "red" });
+  sign("Sweet dreams!", 0, top + 5, b.cursor + 3.5);
+
+  return b.done({
+    sky: "#1b1f3b",
+    keycaps: true,
+    stars: true,
+    ambience: "rain",
+    spell: "THOCK",
+    stages: [
+      { name: "Start", color: "#f4f1ea" },
+      { name: "Switch Garden", color: "#f4f1ea" },
+      { name: "Piano Keys", color: "#fbfbf8" },
+      { name: "Bubble Wrap", color: "#cfefff" },
+      { name: "Jelly Hop", color: "#ffd6e7" },
+      { name: "Type THOCK", color: "#f4f1ea" },
+      { name: "Artisan Stairs", color: "#ffe1cc" },
+    ],
+  });
+}
+
 export const LEVELS = [
   { id: 1, name: "Keyboard Escape", tag: "Start here", build: buildLevel1 },
   { id: 2, name: "Numpad Nightmare", tag: "Harder! 🔥", build: buildLevel2 },
+  {
+    id: 3, name: "Keycap Dreams", tag: "Cosy ASMR ✨", build: buildLevel3,
+    locked: (save) => !save.bests?.[2], lockText: "🔒 Finish Level 2 to unlock",
+  },
 ];
+
+export function isLocked(level, save) {
+  return !!level.locked?.(save);
+}
 
 export function levelById(id) {
   return LEVELS.find((l) => l.id === id) ?? LEVELS[0];
