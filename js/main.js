@@ -8,7 +8,7 @@ import { OPTIONS, cleanLook, cleanName, randomLook } from "./avatar.js";
 import { watchForUpdates } from "./update.js";
 import { Multiplayer } from "./multiplayer.js";
 import { newPlayerId } from "./net.js";
-import { submitScore, fetchTop, fetchRank, friendlyError, MIN_TIME_MS } from "./leaderboard.js";
+import { submitScore, fetchTop, fetchRank, fetchMine, friendlyError, MIN_TIME_MS } from "./leaderboard.js";
 
 const STEP = 1 / 120;
 const BASE_SPEED = 8;
@@ -28,7 +28,7 @@ const ui = {
   mpJoin: $("mp-join"), mpError: $("mp-error"), mpRoom: $("mp-room"), mpStatus: $("mp-status"), mpPlayers: $("mp-players"),
   mpRace: $("mp-race"), mpWait: $("mp-wait"), mpPlay: $("mp-play"), mpLeave: $("mp-leave"), mpBack: $("mp-back"),
   roomChip: $("room-chip"), roomChipText: $("room-chip-text"), countdown: $("countdown"),
-  levels: $("levels"), lb: $("lb"), lbTabs: $("lb-tabs"), lbTitle: $("lb-title"), lbList: $("lb-list"), lbNote: $("lb-note"),
+  levels: $("levels"), lb: $("lb"), lbLevels: $("lb-levels"), lbNote: $("lb-note"),
   lbBack: $("lb-back"), lbHud: $("btn-lb"), nickRow: $("nick-row"), nick: $("nick"), nickSave: $("nick-save"), nextLevel: $("next-level"), openLb: $("open-lb"), winLb: $("win-lb"), winRank: $("win-rank"), raceResults: $("race-results"), winMenu: $("win-menu"), raceAgain: $("race-again"), winTag: $("win-tag"),
   avatar: $("avatar"), openAvatar: $("open-avatar"), name: $("name"), random: $("random"), avatarDone: $("avatar-done"),
 };
@@ -419,7 +419,6 @@ ui.avatarDone.addEventListener("click", closeAvatar);
 ui.openAvatar.addEventListener("click", () => openAvatar(false));
 
 // ---- Public leaderboard -------------------------------------------------------------------------
-let boardLevel = 1;
 
 // Send a finished run to the leaderboard and show where it placed on the win screen.
 // Send a finished run to the leaderboard and show where it placed on the win screen.
@@ -523,7 +522,7 @@ ui.nextLevel.addEventListener("click", () => {
   play();
 });
 
-function openLeaderboard(level = save.level) {
+function openLeaderboard() {
   if (state === "countdown") return;
   if (state === "avatar") closeAvatar();
   show(ui.menu, false);
@@ -534,53 +533,89 @@ function openLeaderboard(level = save.level) {
   input.enabled = false;
   input.release();
   show(ui.lb, true);
-  loadBoard(level);
+  loadBoard();
 }
 
-async function loadBoard(level) {
-  boardLevel = level;
-  ui.lbTabs.replaceChildren(
-    ...LEVELS.map((lvl) => {
-      const b = document.createElement("button");
-      b.className = "lb-tab" + (lvl.id === level ? " on" : "");
-      b.textContent = `Level ${lvl.id}`;
-      b.addEventListener("click", () => loadBoard(lvl.id));
-      return b;
-    }),
-  );
-  ui.lbTitle.textContent = levelById(level).name;
-  ui.lbList.replaceChildren();
-  ui.lbNote.classList.remove("error");
-  ui.lbNote.textContent = "Loading…";
-  try {
-    const rows = await fetchTop(level);
-    if (boardLevel !== level) return; // switched tabs while loading
-    ui.lbNote.textContent = rows.length ? "" : "No times yet. Be the first to escape!";
-    ui.lbList.replaceChildren(
-      ...rows.map((r, i) => {
-        const li = document.createElement("li");
-        if (r.player_id === save.playerId) li.className = "me";
-        const who = document.createElement("span");
-        who.className = "who";
-        const dot = document.createElement("span");
-        dot.className = "dot";
-        dot.style.background = /^#[0-9a-f]{6}$/i.test(r.shirt ?? "") ? r.shirt : "#2f80ed";
-        const name = document.createElement("span");
-        name.textContent = `${medal(i + 1)} ${cleanName(r.name) || "Player"}${r.player_id === save.playerId ? " (you)" : ""}`;
-        who.append(dot, name);
-        const time = document.createElement("span");
-        time.className = "time";
-        time.textContent = fmt(r.time_ms / 1000);
-        li.append(who, time);
-        return li;
-      }),
-    );
-  } catch (err) {
-    if (boardLevel !== level) return;
-    console.warn("Leaderboard:", err);
-    ui.lbNote.textContent = friendlyError(err);
-    ui.lbNote.classList.add("error");
+// Every level at once: the top few on each, plus your own place if you're further down.
+const BOARD_SIZE = 5;
+let boardLoad = 0;
+
+function boardRow(rank, r, isMe) {
+  const li = document.createElement("li");
+  if (isMe) li.className = "me";
+  const who = document.createElement("span");
+  who.className = "who";
+  const dot = document.createElement("span");
+  dot.className = "dot";
+  dot.style.background = /^#[0-9a-f]{6}$/i.test(r.shirt ?? "") ? r.shirt : "#2f80ed";
+  const name = document.createElement("span");
+  name.textContent = `${medal(rank)} ${cleanName(r.name) || "Player"}${isMe ? " (you)" : ""}`;
+  who.append(dot, name);
+  const time = document.createElement("span");
+  time.className = "time";
+  time.textContent = fmt(r.time_ms / 1000);
+  li.append(who, time);
+  return li;
+}
+
+async function loadLevelBoard(lvl) {
+  const rows = await fetchTop(lvl.id, BOARD_SIZE);
+  let mine = null;
+  if (!rows.some((r) => r.player_id === save.playerId)) {
+    const entry = await fetchMine(lvl.id, save.playerId);
+    if (entry) mine = { entry, rank: await fetchRank(lvl.id, entry.time_ms) };
   }
+  return { rows, mine };
+}
+
+async function loadBoard() {
+  const load = ++boardLoad;
+  ui.lbNote.classList.remove("error");
+  ui.lbNote.textContent = "";
+  const sections = LEVELS.map((lvl) => {
+    const sec = document.createElement("section");
+    sec.className = "lb-level" + (lvl.id === save.level ? " current" : "");
+    const title = document.createElement("div");
+    title.className = "lb-level-title";
+    title.textContent = `${lvl.id}. ${lvl.name}`;
+    const list = document.createElement("ol");
+    list.className = "race-results lb-list";
+    const note = document.createElement("p");
+    note.className = "mp-note";
+    note.textContent = "Loading…";
+    sec.append(title, list, note);
+    return { lvl, list, note, sec };
+  });
+  ui.lbLevels.replaceChildren(...sections.map((s) => s.sec));
+  const results = await Promise.allSettled(sections.map((s) => loadLevelBoard(s.lvl)));
+  if (load !== boardLoad) return; // reopened while loading
+  const failures = results.filter((r) => r.status === "rejected");
+  if (failures.length === results.length) {
+    // Nothing loaded at all: one clear message instead of three.
+    console.warn("Leaderboard:", failures[0].reason);
+    ui.lbLevels.replaceChildren();
+    ui.lbNote.textContent = friendlyError(failures[0].reason);
+    ui.lbNote.classList.add("error");
+    return;
+  }
+  results.forEach((res, i) => {
+    const { list, note } = sections[i];
+    if (res.status === "rejected") {
+      console.warn("Leaderboard:", res.reason);
+      note.textContent = friendlyError(res.reason);
+      note.classList.add("error");
+      return;
+    }
+    const { rows, mine } = res.value;
+    note.textContent = rows.length ? "" : "No times yet. Be the first to escape!";
+    list.replaceChildren(...rows.map((r, n) => boardRow(n + 1, r, r.player_id === save.playerId)));
+    if (mine) {
+      const gap = document.createElement("li");
+      gap.className = "lb-gap";
+      gap.textContent = "⋯";
+      list.append(gap, boardRow(mine.rank, { ...mine.entry, shirt: save.look?.shirt }, true));
+    }
+  });
 }
 
 ui.openLb.addEventListener("click", () => openLeaderboard());

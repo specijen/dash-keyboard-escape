@@ -48,8 +48,9 @@ address; they talk to each other without Supabase.
 
 ## Leaderboard
 
-**🏆 Leaderboard** on the menu shows the 10 fastest players on each level, for everyone
-who plays the game. When you escape, your time is sent automatically (if you've set a name)
+**🏆 Leaderboard** (on the menu, the win screen and the top bar) shows every level at once:
+the 5 fastest players on each, plus your own place if you're further down. It's the same
+board for everyone who plays the game. When you escape, your time is sent automatically (if you've set a name)
 and the win screen shows your place. Each player keeps one entry per level: their best time.
 A player with no name who makes the top 10 is asked for a nickname on the win screen.
 After each level, the win screen also offers a button straight to the next one.

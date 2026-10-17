@@ -60,6 +60,17 @@ export async function fetchTop(level, limit = 10) {
   return data ?? [];
 }
 
+// This player's own entry on a level, or null if they haven't got one.
+export async function fetchMine(level, playerId) {
+  if (LOCAL) return localRows().find((r) => r.level === level && r.player_id === playerId) ?? null;
+  const client = await withTimeout(loadSupabase());
+  const { data, error } = await withTimeout(
+    client.from("leaderboard").select("player_id, name, time_ms").eq("level", level).eq("player_id", playerId).limit(1),
+  );
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
 // Where a time would place on a level (1 = fastest).
 export async function fetchRank(level, timeMs) {
   if (LOCAL) return localRows().filter((r) => r.level === level && r.time_ms < timeMs).length + 1;

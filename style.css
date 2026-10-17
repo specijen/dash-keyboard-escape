@@ -169,17 +169,14 @@ button {
 /* ---- Leaderboard ---- */
 .row.two { margin-top: 10px; }
 .lb-btn { background: #fff3c4; }
-.lb-tabs { display: flex; gap: 8px; justify-content: center; margin: 4px 0 10px; }
-.lb-tab {
-  padding: 7px 16px;
-  border-radius: 999px;
-  background: #eef0f7;
-  color: var(--ink);
-  font-weight: 800;
-  font-size: 15px;
-}
-.lb-tab.on { background: var(--ink); color: #fff; }
-.lb-list { max-width: 380px; min-height: 40px; }
+.lb-levels { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.lb-level { text-align: left; }
+.lb-level-title { font-size: 15px; font-weight: 900; margin: 0 auto 2px; max-width: 380px; }
+.lb-level.current .lb-level-title::after { content: "  · playing now"; color: #5a6080; font-weight: 700; font-size: 13px; }
+.lb-level .mp-note { text-align: center; margin-top: 2px; }
+.race-results.lb-list { max-width: 380px; margin: 2px auto; }
+.lb-list li { padding: 5px 12px; font-size: 16px; }
+.lb-list .lb-gap { justify-content: center; padding: 0; color: #8a90a8; background: none !important; }
 .lb-list .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .lb-list .who span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-list .dot { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.12); }
